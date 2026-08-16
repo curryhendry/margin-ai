@@ -1,4 +1,4 @@
-# AI Companion（临时名称，待定）
+# Margin
 
 一个轻量的 Obsidian AI 插件，主打两件事：
 
@@ -47,7 +47,7 @@ npm run build    # 生产构建
 ```
 
 构建后把 `main.js`、`manifest.json`、`styles.css` 复制到你的 vault 的
-`.obsidian/plugins/ai-companion/` 目录，重启 Obsidian 并启用即可。
+`.obsidian/plugins/margin-ai/` 目录，重启 Obsidian 并启用即可。
 （开发期推荐用 [BRAT](https://github.com/TfTHacker/obsidian42-brat) 加载本地路径。）
 
 ---
@@ -55,7 +55,7 @@ npm run build    # 生产构建
 ## 目录结构
 
 ```
-obsidian-ai-companion/
+obsidian-margin/
 ├── manifest.json
 ├── package.json
 ├── tsconfig.json

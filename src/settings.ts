@@ -45,7 +45,7 @@ export class AISettingsTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "AI Companion 设置" });
+    containerEl.createEl("h2", { text: "Margin 设置" });
 
     // ---- 添加模型 ----
     containerEl.createEl("h3", { text: "添加模型" });

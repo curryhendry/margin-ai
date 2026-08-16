@@ -53,7 +53,7 @@ export default class AIPlugin extends Plugin {
 
     // 设置变更后通知已打开的 chat 视图刷新模型列表
     this.registerEvent(
-      (this.app.workspace as any).on("ai-companion:settings-changed", () => {
+      (this.app.workspace as any).on("margin:settings-changed", () => {
         const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_CHAT)[0];
         if (leaf) (leaf.view as ChatView).refreshModels();
       })
@@ -83,6 +83,6 @@ export default class AIPlugin extends Plugin {
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
-    (this.app.workspace as any).trigger("ai-companion:settings-changed");
+    (this.app.workspace as any).trigger("margin:settings-changed");
   }
 }

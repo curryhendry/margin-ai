@@ -3,7 +3,7 @@ import type AIPlugin from "../main";
 import { ChatMessage, UsageInfo } from "../llm/types";
 import { getProvider } from "../llm";
 
-export const VIEW_TYPE_CHAT = "ai-companion-chat";
+export const VIEW_TYPE_CHAT = "margin-chat";
 
 export class ChatView extends ItemView {
   plugin: AIPlugin;
