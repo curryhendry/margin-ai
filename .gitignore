@@ -1,4 +1,10 @@
+data.json
+*.bak
+*.bak-*
+*.restored
 node_modules/
-main.js
-*.js.map
 .DS_Store
+*.js.map
+
+# 部署脚本仅本地保留，不入库
+deploy.sh
