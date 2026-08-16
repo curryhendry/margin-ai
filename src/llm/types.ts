@@ -1,4 +1,4 @@
-import { AIModel } from "../settings";
+import type { AIModel } from "../settings";
 
 export interface ChatMessage {
   role: "user" | "model";
@@ -24,8 +24,22 @@ export interface ChatOptions {
   systemInstruction?: string;
 }
 
+/** 模型元数据：上下文 / 输出 token 上限（来自 Gemini models.get） */
+export interface ModelMeta {
+  inputTokenLimit?: number;
+  outputTokenLimit?: number;
+}
+
+/** 连接测试结果 */
+export interface TestResult {
+  ok: boolean;
+  meta?: ModelMeta;
+  error?: string;
+}
+
 /**
- * 供应商抽象层。初期仅 Gemini，后期扩展 OpenAI / Claude 时实现同一接口即可。
+ * 供应商抽象层。初期仅 Gemini。
+ * chat 为流式对话；getModelMeta 可选，用于连接测试 + 取模型限额。
  */
 export interface LLMProvider {
   id: string;
@@ -35,4 +49,5 @@ export interface LLMProvider {
     cb: StreamCallbacks,
     opts?: ChatOptions
   ): Promise<void>;
+  getModelMeta?(model: AIModel): Promise<TestResult>;
 }

@@ -1,12 +1,13 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import type AIPlugin from "./main";
+import { testGeminiModel } from "./llm/gemini";
 
 export type ProviderId = "gemini";
 
 export interface AIModel {
   /** 唯一 ID */
   id: string;
-  /** 模型名称，即发给 API 的 model 字段，例如 gemini-3.5-flash（用户录入，不写死） */
+  /** 模型名称，即发给 API 的 model 字段，例如 gemini-3.5-flash（用户录入，不写硬） */
   name: string;
   /** 供应商，初期仅 gemini，结构可扩展 */
   provider: ProviderId;
@@ -14,6 +15,10 @@ export interface AIModel {
   apiKey: string;
   /** 可选：自定义 base URL（用于代理 / 兼容网关） */
   baseUrl?: string;
+  /** 测试连接后回填：上下文 token 上限 */
+  inputTokenLimit?: number;
+  /** 测试连接后回填：单次输出 token 上限 */
+  outputTokenLimit?: number;
 }
 
 export interface AIPluginSettings {
@@ -31,9 +36,24 @@ export const DEFAULT_SETTINGS: AIPluginSettings = {
   systemInstruction: "",
 };
 
+/** 把 1048576 这类数字格式化成 1M / 8K，更易读 */
+export function fmtLimit(n?: number): string {
+  if (n == null) return "—";
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1) + "M";
+  if (n >= 1_000) return Math.round(n / 1_000) + "K";
+  return String(n);
+}
+
+/** 模型行展示用的限额文本；任一缺失则不显示对应段 */
+export function modelLimitsText(m: AIModel): string {
+  const inL = m.inputTokenLimit != null ? `上下文 ${fmtLimit(m.inputTokenLimit)}` : null;
+  const outL = m.outputTokenLimit != null ? `输出 ${fmtLimit(m.outputTokenLimit)}` : null;
+  const parts = [inL, outL].filter(Boolean) as string[];
+  return parts.join(" · ");
+}
+
 /**
- * 创建带“眼睛”切换明文的 Key 输入框（密码 / 明文）。
- * 返回 input，眼睛按钮自动挂在旁边。
+ * 创建带“眼睛”切换明文的 Key 输入框。
  */
 function createKeyInput(container: HTMLElement, value = ""): HTMLInputElement {
   const wrap = container.createDiv({ cls: "ai-set-key-wrap" });
@@ -76,7 +96,7 @@ export class AISettingsTab extends PluginSettingTab {
     this.renderGeneral(containerEl);
   }
 
-  /** 添加模型：名称 + Key（带眼睛）+ 添加按钮 */
+  /** 添加模型 */
   private renderAddModel(containerEl: HTMLElement): void {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
     card.createEl("h3", { text: "添加模型" });
@@ -120,7 +140,7 @@ export class AISettingsTab extends PluginSettingTab {
     });
   }
 
-  /** 模型列表：名称 / 供应商 + 设为默认 / 修改 / 删除 */
+  /** 模型列表 */
   private renderModelList(containerEl: HTMLElement): void {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
     card.createEl("h3", { text: "已添加模型" });
@@ -139,6 +159,11 @@ export class AISettingsTab extends PluginSettingTab {
       const info = row.createDiv({ cls: "ai-set-model-info" });
       info.createEl("span", { cls: "ai-set-model-name", text: m.name });
       info.createEl("span", { cls: "ai-set-model-provider", text: m.provider });
+      const limitsSpan = info.createEl("span", {
+        cls: "ai-set-model-limits",
+        text: modelLimitsText(m),
+      });
+      if (!limitsSpan.getText()) limitsSpan.setText("未测试");
 
       const actions = row.createDiv({ cls: "ai-set-model-actions" });
 
@@ -151,6 +176,28 @@ export class AISettingsTab extends PluginSettingTab {
         this.plugin.settings.defaultModelId = m.id;
         await this.plugin.saveSettings();
         this.display();
+      });
+
+      // 测试连接 → 拉取限额并回填
+      const testBtn = actions.createEl("button", {
+        cls: "ai-set-model-btn",
+        text: "测试",
+      });
+      testBtn.addEventListener("click", async () => {
+        testBtn.setText("测试中…");
+        const r = await testGeminiModel(m);
+        if (r.ok && r.meta) {
+          m.inputTokenLimit = r.meta.inputTokenLimit;
+          m.outputTokenLimit = r.meta.outputTokenLimit;
+          await this.plugin.saveSettings();
+          new Notice(
+            `✓ ${m.name} 连接成功 · ${modelLimitsText(m) || "无限额信息"}`
+          );
+          this.display();
+        } else {
+          new Notice("✗ 测试失败：" + (r.error || "未知错误"));
+          testBtn.setText("测试");
+        }
       });
 
       const edit = actions.createEl("button", {
@@ -177,7 +224,7 @@ export class AISettingsTab extends PluginSettingTab {
     });
   }
 
-  /** 行内编辑模型：名称 / Key（带眼睛）/ baseUrl + 保存 / 取消 */
+  /** 行内编辑 */
   private renderEditForm(row: HTMLElement, m: AIModel): void {
     row.empty();
     row.addClass("is-editing");

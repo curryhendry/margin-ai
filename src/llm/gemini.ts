@@ -1,12 +1,56 @@
-import { AIModel } from "../settings";
-import { ChatMessage, StreamCallbacks, UsageInfo, LLMProvider, ChatOptions } from "./types";
+import type { AIModel } from "../settings";
+import {
+  ChatMessage,
+  StreamCallbacks,
+  UsageInfo,
+  LLMProvider,
+  ChatOptions,
+  ModelMeta,
+  TestResult,
+} from "./types";
 
 /**
  * Gemini 流式对话客户端。
  * 使用 v1beta streamGenerateContent + SSE，解析 candidates 文本与 usageMetadata。
  */
+
+/**
+ * 测试连接 + 获取模型元数据（上下文/输出上限）。
+ * 调用 v1beta models.get，返回 inputTokenLimit / outputTokenLimit。
+ * 供设置页「测试连接」按钮和 provider.getModelMeta 共用。
+ */
+export async function testGeminiModel(model: AIModel): Promise<TestResult> {
+  const base =
+    model.baseUrl || "https://generativelanguage.googleapis.com/v1beta";
+  const url = `${base}/models/${encodeURIComponent(
+    model.name
+  )}?key=${model.apiKey}`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) {
+      const t = await r.text().catch(() => "");
+      return { ok: false, error: `HTTP ${r.status}: ${t.slice(0, 200)}` };
+    }
+    const j: any = await r.json();
+    const meta: ModelMeta = {};
+    if (typeof j.inputTokenLimit === "number") {
+      meta.inputTokenLimit = j.inputTokenLimit;
+    }
+    if (typeof j.outputTokenLimit === "number") {
+      meta.outputTokenLimit = j.outputTokenLimit;
+    }
+    return { ok: true, meta };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+}
+
 export class GeminiProvider implements LLMProvider {
   id = "gemini";
+
+  getModelMeta(model: AIModel): Promise<TestResult> {
+    return testGeminiModel(model);
+  }
 
   async chat(
     model: AIModel,
@@ -47,7 +91,9 @@ export class GeminiProvider implements LLMProvider {
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      cb.onError?.(new Error(`Gemini API ${res.status}: ${text.slice(0, 300)}`));
+      cb.onError?.(
+        new Error(`Gemini API ${res.status}: ${text.slice(0, 300)}`)
+      );
       return;
     }
     if (!res.body) {

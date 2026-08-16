@@ -2,6 +2,7 @@ import { ItemView, WorkspaceLeaf, Notice } from "obsidian";
 import type AIPlugin from "../main";
 import { ChatMessage, UsageInfo } from "../llm/types";
 import { getProvider } from "../llm";
+import { fmtLimit, modelLimitsText } from "../settings";
 
 export const VIEW_TYPE_CHAT = "margin-chat";
 
@@ -42,6 +43,7 @@ export class ChatView extends ItemView {
   refreshModels(): void {
     if (!this.modelSelect) return;
     this.populateModels();
+    this.showUsage(null);
   }
 
   private currentModel() {
@@ -72,6 +74,7 @@ export class ChatView extends ItemView {
       cls: "ai-chat-model-select dropdown",
     });
     this.populateModels();
+    this.modelSelect.addEventListener("change", () => this.showUsage(null));
     const clearBtn = header.createEl("button", {
       cls: "ai-chat-clear",
       text: "清空",
@@ -93,8 +96,9 @@ export class ChatView extends ItemView {
       cls: "ai-chat-input",
       placeholder: "输入消息，Enter 发送，Shift+Enter 换行",
     });
+    // 不带 mod-cta，避免默认大紫按钮
     const sendBtn = inputWrap.createEl("button", {
-      cls: "ai-chat-send mod-cta",
+      cls: "ai-chat-send",
       text: "发送",
     });
     sendBtn.addEventListener("click", () => this.send());
@@ -119,6 +123,18 @@ export class ChatView extends ItemView {
         text: m.role === "user" ? "你" : "AI",
       });
       bubble.createEl("div", { cls: "ai-msg-content", text: m.content });
+
+      // 复制图标：hover 显示，点击复制本条消息
+      const copyBtn = bubble.createEl("button", {
+        cls: "ai-msg-copy",
+        text: "📋",
+        attr: { type: "button", title: "复制本条消息" },
+      });
+      copyBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(m.content);
+        new Notice("已复制");
+      });
     }
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   }
@@ -136,13 +152,23 @@ export class ChatView extends ItemView {
     this.renderMessages();
     this.busy = true;
 
+    let acc = "";
     const aiBubble = this.messagesEl.createDiv({ cls: "ai-msg ai-msg-model" });
     aiBubble.createEl("div", { cls: "ai-msg-role", text: "AI" });
     const contentEl = aiBubble.createEl("div", {
       cls: "ai-msg-content",
       text: "",
     });
-    let acc = "";
+    const copyBtn = aiBubble.createEl("button", {
+      cls: "ai-msg-copy",
+      text: "📋",
+      attr: { type: "button", title: "复制本条消息" },
+    });
+    copyBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(acc);
+      new Notice("已复制");
+    });
 
     const provider = getProvider(model.provider);
     try {
@@ -176,15 +202,20 @@ export class ChatView extends ItemView {
     }
   }
 
+  /** 用量 / 模型限额展示。两行：上行模型+限额，下行会话+本次用量 */
   private showUsage(u: UsageInfo | null): void {
-    if (!u) {
-      this.usageEl.setText(
-        `会话用量 — 提示 ${this.sessionUsage.prompt} · 补全 ${this.sessionUsage.completion} · 总计 ${this.sessionUsage.total} tokens`
-      );
-      return;
-    }
-    this.usageEl.setText(
-      `会话用量 — 提示 ${this.sessionUsage.prompt} · 补全 ${this.sessionUsage.completion} · 总计 ${this.sessionUsage.total} tokens（本次 ${u.totalTokens}）`
+    this.usageEl.empty();
+    const m = this.currentModel();
+    const limits = m ? modelLimitsText(m) : "";
+    const row1 = this.usageEl.createDiv({ cls: "ai-chat-usage-line" });
+    row1.setText(
+      `${m?.name ?? "未选模型"}${limits ? " · " + limits : ""}`
+    );
+    const row2 = this.usageEl.createDiv({ cls: "ai-chat-usage-line" });
+    const s = this.sessionUsage;
+    const tail = u ? `本次 ${u.promptTokens}+${u.completionTokens}=${u.totalTokens}` : "—";
+    row2.setText(
+      `会话累计 ${s.prompt}+${s.completion}=${s.total} tokens · ${tail}`
     );
   }
 }

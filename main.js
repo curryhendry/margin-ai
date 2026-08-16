@@ -32,11 +32,135 @@ var import_obsidian4 = require("obsidian");
 
 // src/settings.ts
 var import_obsidian = require("obsidian");
+
+// src/llm/gemini.ts
+async function testGeminiModel(model) {
+  const base = model.baseUrl || "https://generativelanguage.googleapis.com/v1beta";
+  const url = `${base}/models/${encodeURIComponent(
+    model.name
+  )}?key=${model.apiKey}`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) {
+      const t = await r.text().catch(() => "");
+      return { ok: false, error: `HTTP ${r.status}: ${t.slice(0, 200)}` };
+    }
+    const j = await r.json();
+    const meta = {};
+    if (typeof j.inputTokenLimit === "number") {
+      meta.inputTokenLimit = j.inputTokenLimit;
+    }
+    if (typeof j.outputTokenLimit === "number") {
+      meta.outputTokenLimit = j.outputTokenLimit;
+    }
+    return { ok: true, meta };
+  } catch (e) {
+    return { ok: false, error: (e == null ? void 0 : e.message) || String(e) };
+  }
+}
+var GeminiProvider = class {
+  constructor() {
+    __publicField(this, "id", "gemini");
+  }
+  getModelMeta(model) {
+    return testGeminiModel(model);
+  }
+  async chat(model, messages, cb, opts) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
+    const base = model.baseUrl || "https://generativelanguage.googleapis.com/v1beta";
+    const url = `${base}/models/${encodeURIComponent(
+      model.name
+    )}:streamGenerateContent?alt=sse&key=${model.apiKey}`;
+    const contents = messages.map((m) => ({
+      role: m.role === "model" ? "model" : "user",
+      parts: [{ text: m.content }]
+    }));
+    const body = { contents };
+    if ((opts == null ? void 0 : opts.systemInstruction) && opts.systemInstruction.trim()) {
+      body.systemInstruction = {
+        parts: [{ text: opts.systemInstruction }]
+      };
+    }
+    let res;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+    } catch (e) {
+      (_a = cb.onError) == null ? void 0 : _a.call(cb, new Error("\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25\uFF1A" + e.message));
+      return;
+    }
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      (_b = cb.onError) == null ? void 0 : _b.call(
+        cb,
+        new Error(`Gemini API ${res.status}: ${text.slice(0, 300)}`)
+      );
+      return;
+    }
+    if (!res.body) {
+      (_c = cb.onError) == null ? void 0 : _c.call(cb, new Error("\u54CD\u5E94\u4E3A\u7A7A"));
+      return;
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+    let usage = null;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() || "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data:")) continue;
+          const json = trimmed.slice(5).trim();
+          if (!json || json === "[DONE]") continue;
+          try {
+            const data = JSON.parse(json);
+            const text = ((_g = (_f = (_e = (_d = data.candidates) == null ? void 0 : _d[0]) == null ? void 0 : _e.content) == null ? void 0 : _f.parts) == null ? void 0 : _g.map((p) => p.text || "").join("")) || "";
+            if (text) (_h = cb.onToken) == null ? void 0 : _h.call(cb, text);
+            if (data.usageMetadata) {
+              usage = {
+                promptTokens: (_i = data.usageMetadata.promptTokenCount) != null ? _i : 0,
+                completionTokens: (_j = data.usageMetadata.candidatesTokenCount) != null ? _j : 0,
+                totalTokens: (_k = data.usageMetadata.totalTokenCount) != null ? _k : 0
+              };
+            }
+          } catch (e) {
+          }
+        }
+      }
+    } catch (e) {
+      (_l = cb.onError) == null ? void 0 : _l.call(cb, new Error("\u8BFB\u53D6\u54CD\u5E94\u5931\u8D25\uFF1A" + e.message));
+      return;
+    }
+    (_m = cb.onDone) == null ? void 0 : _m.call(cb, usage);
+  }
+};
+
+// src/settings.ts
 var DEFAULT_SETTINGS = {
   models: [],
   defaultModelId: "",
   systemInstruction: ""
 };
+function fmtLimit(n) {
+  if (n == null) return "\u2014";
+  if (n >= 1e6) return (n / 1e6).toFixed(n % 1e6 === 0 ? 0 : 1) + "M";
+  if (n >= 1e3) return Math.round(n / 1e3) + "K";
+  return String(n);
+}
+function modelLimitsText(m) {
+  const inL = m.inputTokenLimit != null ? `\u4E0A\u4E0B\u6587 ${fmtLimit(m.inputTokenLimit)}` : null;
+  const outL = m.outputTokenLimit != null ? `\u8F93\u51FA ${fmtLimit(m.outputTokenLimit)}` : null;
+  const parts = [inL, outL].filter(Boolean);
+  return parts.join(" \xB7 ");
+}
 function createKeyInput(container, value = "") {
   const wrap = container.createDiv({ cls: "ai-set-key-wrap" });
   const input = wrap.createEl("input", {
@@ -72,7 +196,7 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
     this.renderModelList(containerEl);
     this.renderGeneral(containerEl);
   }
-  /** 添加模型：名称 + Key（带眼睛）+ 添加按钮 */
+  /** 添加模型 */
   renderAddModel(containerEl) {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
     card.createEl("h3", { text: "\u6DFB\u52A0\u6A21\u578B" });
@@ -111,7 +235,7 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
       this.display();
     });
   }
-  /** 模型列表：名称 / 供应商 + 设为默认 / 修改 / 删除 */
+  /** 模型列表 */
   renderModelList(containerEl) {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
     card.createEl("h3", { text: "\u5DF2\u6DFB\u52A0\u6A21\u578B" });
@@ -127,6 +251,11 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
       const info = row.createDiv({ cls: "ai-set-model-info" });
       info.createEl("span", { cls: "ai-set-model-name", text: m.name });
       info.createEl("span", { cls: "ai-set-model-provider", text: m.provider });
+      const limitsSpan = info.createEl("span", {
+        cls: "ai-set-model-limits",
+        text: modelLimitsText(m)
+      });
+      if (!limitsSpan.getText()) limitsSpan.setText("\u672A\u6D4B\u8BD5");
       const actions = row.createDiv({ cls: "ai-set-model-actions" });
       const isDefault = this.plugin.settings.defaultModelId === m.id;
       const def = actions.createEl("button", {
@@ -137,6 +266,26 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
         this.plugin.settings.defaultModelId = m.id;
         await this.plugin.saveSettings();
         this.display();
+      });
+      const testBtn = actions.createEl("button", {
+        cls: "ai-set-model-btn",
+        text: "\u6D4B\u8BD5"
+      });
+      testBtn.addEventListener("click", async () => {
+        testBtn.setText("\u6D4B\u8BD5\u4E2D\u2026");
+        const r = await testGeminiModel(m);
+        if (r.ok && r.meta) {
+          m.inputTokenLimit = r.meta.inputTokenLimit;
+          m.outputTokenLimit = r.meta.outputTokenLimit;
+          await this.plugin.saveSettings();
+          new import_obsidian.Notice(
+            `\u2713 ${m.name} \u8FDE\u63A5\u6210\u529F \xB7 ${modelLimitsText(m) || "\u65E0\u9650\u989D\u4FE1\u606F"}`
+          );
+          this.display();
+        } else {
+          new import_obsidian.Notice("\u2717 \u6D4B\u8BD5\u5931\u8D25\uFF1A" + (r.error || "\u672A\u77E5\u9519\u8BEF"));
+          testBtn.setText("\u6D4B\u8BD5");
+        }
       });
       const edit = actions.createEl("button", {
         cls: "ai-set-model-btn",
@@ -160,7 +309,7 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
       });
     });
   }
-  /** 行内编辑模型：名称 / Key（带眼睛）/ baseUrl + 保存 / 取消 */
+  /** 行内编辑 */
   renderEditForm(row, m) {
     var _a;
     row.empty();
@@ -218,86 +367,6 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
 // src/views/chatView.ts
 var import_obsidian2 = require("obsidian");
 
-// src/llm/gemini.ts
-var GeminiProvider = class {
-  constructor() {
-    __publicField(this, "id", "gemini");
-  }
-  async chat(model, messages, cb, opts) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
-    const base = model.baseUrl || "https://generativelanguage.googleapis.com/v1beta";
-    const url = `${base}/models/${encodeURIComponent(
-      model.name
-    )}:streamGenerateContent?alt=sse&key=${model.apiKey}`;
-    const contents = messages.map((m) => ({
-      role: m.role === "model" ? "model" : "user",
-      parts: [{ text: m.content }]
-    }));
-    const body = { contents };
-    if ((opts == null ? void 0 : opts.systemInstruction) && opts.systemInstruction.trim()) {
-      body.systemInstruction = {
-        parts: [{ text: opts.systemInstruction }]
-      };
-    }
-    let res;
-    try {
-      res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      });
-    } catch (e) {
-      (_a = cb.onError) == null ? void 0 : _a.call(cb, new Error("\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25\uFF1A" + e.message));
-      return;
-    }
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      (_b = cb.onError) == null ? void 0 : _b.call(cb, new Error(`Gemini API ${res.status}: ${text.slice(0, 300)}`));
-      return;
-    }
-    if (!res.body) {
-      (_c = cb.onError) == null ? void 0 : _c.call(cb, new Error("\u54CD\u5E94\u4E3A\u7A7A"));
-      return;
-    }
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buf = "";
-    let usage = null;
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop() || "";
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith("data:")) continue;
-          const json = trimmed.slice(5).trim();
-          if (!json || json === "[DONE]") continue;
-          try {
-            const data = JSON.parse(json);
-            const text = ((_g = (_f = (_e = (_d = data.candidates) == null ? void 0 : _d[0]) == null ? void 0 : _e.content) == null ? void 0 : _f.parts) == null ? void 0 : _g.map((p) => p.text || "").join("")) || "";
-            if (text) (_h = cb.onToken) == null ? void 0 : _h.call(cb, text);
-            if (data.usageMetadata) {
-              usage = {
-                promptTokens: (_i = data.usageMetadata.promptTokenCount) != null ? _i : 0,
-                completionTokens: (_j = data.usageMetadata.candidatesTokenCount) != null ? _j : 0,
-                totalTokens: (_k = data.usageMetadata.totalTokenCount) != null ? _k : 0
-              };
-            }
-          } catch (e) {
-          }
-        }
-      }
-    } catch (e) {
-      (_l = cb.onError) == null ? void 0 : _l.call(cb, new Error("\u8BFB\u53D6\u54CD\u5E94\u5931\u8D25\uFF1A" + e.message));
-      return;
-    }
-    (_m = cb.onDone) == null ? void 0 : _m.call(cb, usage);
-  }
-};
-
 // src/llm/index.ts
 var providers = {
   gemini: new GeminiProvider()
@@ -342,6 +411,7 @@ var ChatView = class extends import_obsidian2.ItemView {
   refreshModels() {
     if (!this.modelSelect) return;
     this.populateModels();
+    this.showUsage(null);
   }
   currentModel() {
     var _a;
@@ -366,6 +436,7 @@ var ChatView = class extends import_obsidian2.ItemView {
       cls: "ai-chat-model-select dropdown"
     });
     this.populateModels();
+    this.modelSelect.addEventListener("change", () => this.showUsage(null));
     const clearBtn = header.createEl("button", {
       cls: "ai-chat-clear",
       text: "\u6E05\u7A7A"
@@ -385,7 +456,7 @@ var ChatView = class extends import_obsidian2.ItemView {
       placeholder: "\u8F93\u5165\u6D88\u606F\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C"
     });
     const sendBtn = inputWrap.createEl("button", {
-      cls: "ai-chat-send mod-cta",
+      cls: "ai-chat-send",
       text: "\u53D1\u9001"
     });
     sendBtn.addEventListener("click", () => this.send());
@@ -408,6 +479,16 @@ var ChatView = class extends import_obsidian2.ItemView {
         text: m.role === "user" ? "\u4F60" : "AI"
       });
       bubble.createEl("div", { cls: "ai-msg-content", text: m.content });
+      const copyBtn = bubble.createEl("button", {
+        cls: "ai-msg-copy",
+        text: "\u{1F4CB}",
+        attr: { type: "button", title: "\u590D\u5236\u672C\u6761\u6D88\u606F" }
+      });
+      copyBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(m.content);
+        new import_obsidian2.Notice("\u5DF2\u590D\u5236");
+      });
     }
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   }
@@ -423,13 +504,23 @@ var ChatView = class extends import_obsidian2.ItemView {
     this.messages.push({ role: "user", content: text });
     this.renderMessages();
     this.busy = true;
+    let acc = "";
     const aiBubble = this.messagesEl.createDiv({ cls: "ai-msg ai-msg-model" });
     aiBubble.createEl("div", { cls: "ai-msg-role", text: "AI" });
     const contentEl = aiBubble.createEl("div", {
       cls: "ai-msg-content",
       text: ""
     });
-    let acc = "";
+    const copyBtn = aiBubble.createEl("button", {
+      cls: "ai-msg-copy",
+      text: "\u{1F4CB}",
+      attr: { type: "button", title: "\u590D\u5236\u672C\u6761\u6D88\u606F" }
+    });
+    copyBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(acc);
+      new import_obsidian2.Notice("\u5DF2\u590D\u5236");
+    });
     const provider = getProvider(model.provider);
     try {
       await provider.chat(
@@ -461,15 +552,21 @@ var ChatView = class extends import_obsidian2.ItemView {
       this.busy = false;
     }
   }
+  /** 用量 / 模型限额展示。两行：上行模型+限额，下行会话+本次用量 */
   showUsage(u) {
-    if (!u) {
-      this.usageEl.setText(
-        `\u4F1A\u8BDD\u7528\u91CF \u2014 \u63D0\u793A ${this.sessionUsage.prompt} \xB7 \u8865\u5168 ${this.sessionUsage.completion} \xB7 \u603B\u8BA1 ${this.sessionUsage.total} tokens`
-      );
-      return;
-    }
-    this.usageEl.setText(
-      `\u4F1A\u8BDD\u7528\u91CF \u2014 \u63D0\u793A ${this.sessionUsage.prompt} \xB7 \u8865\u5168 ${this.sessionUsage.completion} \xB7 \u603B\u8BA1 ${this.sessionUsage.total} tokens\uFF08\u672C\u6B21 ${u.totalTokens}\uFF09`
+    var _a;
+    this.usageEl.empty();
+    const m = this.currentModel();
+    const limits = m ? modelLimitsText(m) : "";
+    const row1 = this.usageEl.createDiv({ cls: "ai-chat-usage-line" });
+    row1.setText(
+      `${(_a = m == null ? void 0 : m.name) != null ? _a : "\u672A\u9009\u6A21\u578B"}${limits ? " \xB7 " + limits : ""}`
+    );
+    const row2 = this.usageEl.createDiv({ cls: "ai-chat-usage-line" });
+    const s = this.sessionUsage;
+    const tail = u ? `\u672C\u6B21 ${u.promptTokens}+${u.completionTokens}=${u.totalTokens}` : "\u2014";
+    row2.setText(
+      `\u4F1A\u8BDD\u7D2F\u8BA1 ${s.prompt}+${s.completion}=${s.total} tokens \xB7 ${tail}`
     );
   }
 };
@@ -531,7 +628,7 @@ var SelectionPopover = class {
       placeholder: "\u57FA\u4E8E\u9009\u533A\u63D0\u95EE\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C"
     });
     const send = inputWrap.createEl("button", {
-      cls: "ai-popover-send mod-cta",
+      cls: "ai-popover-send",
       text: "\u53D1\u9001"
     });
     send.addEventListener("click", () => this.send());
@@ -548,7 +645,6 @@ var SelectionPopover = class {
     this.position(rect);
     this.makeDraggable(header);
   }
-  /** 读取选区在屏幕上的位置（编辑器内选中文字） */
   getSelectionRect() {
     const sel = window.getSelection();
     if (sel && sel.rangeCount > 0) {
@@ -557,7 +653,6 @@ var SelectionPopover = class {
     }
     return null;
   }
-  /** 固定定位 + 边界钳制 */
   position(rect) {
     if (!this.root) return;
     const w = 380;
@@ -570,7 +665,6 @@ var SelectionPopover = class {
     this.root.style.left = x + "px";
     this.root.style.top = y + "px";
   }
-  /** 按住头部拖动悬浮窗 */
   makeDraggable(header) {
     let dragging = false;
     let startX = 0;
@@ -605,6 +699,7 @@ var SelectionPopover = class {
     (_a = this.root) == null ? void 0 : _a.remove();
     this.root = void 0;
   }
+  /** 仅保留「插入光标 / 覆盖选区」两个真操作；复制由每条消息自带图标完成。 */
   renderActions() {
     if (!this.actionsEl) return;
     this.actionsEl.empty();
@@ -619,10 +714,6 @@ var SelectionPopover = class {
       });
       b.addEventListener("click", fn);
     };
-    mk("\u590D\u5236", "\u{1F4CB}", () => {
-      navigator.clipboard.writeText(this.lastResult);
-      new import_obsidian3.Notice("\u5DF2\u590D\u5236\u5230\u526A\u8D34\u677F");
-    });
     mk("\u63D2\u5165\u5149\u6807", "\u{1F4E5}", () => {
       this.editor.replaceRange(this.lastResult, this.editor.getCursor());
       new import_obsidian3.Notice("\u5DF2\u63D2\u5165\u5230\u5149\u6807\u5904");
@@ -631,16 +722,12 @@ var SelectionPopover = class {
       this.editor.replaceRange(this.lastResult, this.from, this.to);
       new import_obsidian3.Notice("\u5DF2\u8986\u76D6\u9009\u533A");
     });
-    mk("\u7EE7\u7EED\u5BF9\u8BDD", "\u{1F4AC}", () => {
-      var _a;
-      return (_a = this.inputEl) == null ? void 0 : _a.focus();
-    });
   }
-  /** 渲染完整对话历史（用户 + AI），用于刷新显示 */
   renderMessages() {
     if (!this.messagesEl) return;
     this.messagesEl.empty();
     for (const m of this.messages) {
+      const text = this.displayText(m);
       const bubble = this.messagesEl.createDiv({
         cls: `ai-popover-msg ai-popover-msg-${m.role}`
       });
@@ -648,14 +735,20 @@ var SelectionPopover = class {
         cls: "ai-popover-msg-role",
         text: m.role === "user" ? "\u4F60" : "AI"
       });
-      bubble.createDiv({
-        cls: "ai-popover-msg-content",
-        text: this.displayText(m)
+      bubble.createDiv({ cls: "ai-popover-msg-content", text });
+      const copyBtn = bubble.createEl("button", {
+        cls: "ai-popover-msg-copy",
+        text: "\u{1F4CB}",
+        attr: { type: "button", title: "\u590D\u5236\u672C\u6761\u6D88\u606F" }
+      });
+      copyBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text);
+        new import_obsidian3.Notice("\u5DF2\u590D\u5236");
       });
     }
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   }
-  /** 首条用户消息带选区上下文，展示时只显示问题本身 */
   displayText(m) {
     const marker = "\u8BF7\u57FA\u4E8E\u4E0A\u8FF0\u6587\u672C\u56DE\u7B54\u6211\u7684\u95EE\u9898\uFF1A";
     const i = m.content.indexOf(marker);
@@ -691,6 +784,7 @@ ${this.selected}
     if (this.inputEl) this.inputEl.value = "";
     this.busy = true;
     this.renderMessages();
+    let acc = "";
     const aiBubble = this.messagesEl.createDiv({
       cls: "ai-popover-msg ai-popover-msg-model"
     });
@@ -699,7 +793,16 @@ ${this.selected}
       cls: "ai-popover-msg-content",
       text: ""
     });
-    let acc = "";
+    const copyBtn = aiBubble.createEl("button", {
+      cls: "ai-popover-msg-copy",
+      text: "\u{1F4CB}",
+      attr: { type: "button", title: "\u590D\u5236\u672C\u6761\u6D88\u606F" }
+    });
+    copyBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(acc);
+      new import_obsidian3.Notice("\u5DF2\u590D\u5236");
+    });
     const provider = getProvider(model.provider);
     try {
       await provider.chat(
@@ -728,15 +831,28 @@ ${this.selected}
       this.busy = false;
     }
   }
+  /** 模型限额 + 本次用量 */
   renderUsage(u) {
     if (!this.usageEl) return;
-    if (!u) {
-      this.usageEl.setText("");
+    this.usageEl.empty();
+    const model = this.plugin.settings.models.find(
+      (m) => m.id === this.plugin.settings.defaultModelId
+    ) || this.plugin.settings.models[0];
+    if (!model) {
+      this.usageEl.setText("\u672A\u9009\u6A21\u578B");
       return;
     }
-    this.usageEl.setText(
-      `\u7528\u91CF \u2014 \u63D0\u793A ${u.promptTokens} \xB7 \u8865\u5168 ${u.completionTokens} \xB7 \u603B\u8BA1 ${u.totalTokens} tokens`
-    );
+    const limits = modelLimitsText(model);
+    const line1 = this.usageEl.createDiv({ cls: "ai-popover-usage-line" });
+    line1.setText(`${model.name}${limits ? " \xB7 " + limits : ""}`);
+    if (u) {
+      const line2 = this.usageEl.createDiv({
+        cls: "ai-popover-usage-line"
+      });
+      line2.setText(
+        `\u672C\u6B21 \u63D0\u793A ${u.promptTokens} \xB7 \u8865\u5168 ${u.completionTokens} \xB7 \u603B\u8BA1 ${u.totalTokens}`
+      );
+    }
   }
 };
 
