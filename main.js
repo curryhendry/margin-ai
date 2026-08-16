@@ -523,8 +523,9 @@ var ChatView = class extends import_obsidian3.ItemView {
     this.modelSelect.addEventListener("change", () => this.showUsage(null));
     const newBtn = header.createEl("button", {
       cls: "ai-chat-clear",
-      text: "\u65B0\u5BF9\u8BDD"
+      attr: { type: "button", title: "\u65B0\u5BF9\u8BDD" }
     });
+    (0, import_obsidian3.setIcon)(newBtn, "plus");
     newBtn.addEventListener("click", () => {
       this.histories.delete(this.noteKey);
       this.usageByNote.delete(this.noteKey);
@@ -571,9 +572,9 @@ var ChatView = class extends import_obsidian3.ItemView {
       bubble.createEl("div", { cls: "ai-msg-content", text: m.content });
       const copyBtn = bubble.createEl("button", {
         cls: "ai-msg-copy",
-        text: "\u{1F4CB}",
         attr: { type: "button", title: "\u590D\u5236\u672C\u6761\u6D88\u606F" }
       });
+      (0, import_obsidian3.setIcon)(copyBtn, "copy");
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         copyText(m.content);
@@ -639,16 +640,17 @@ var ChatView = class extends import_obsidian3.ItemView {
     );
     let acc = "";
     const aiBubble = this.messagesEl.createDiv({ cls: "ai-msg ai-msg-model" });
-    aiBubble.createEl("div", { cls: "ai-msg-role", text: "AI" });
+    const roleEl = aiBubble.createEl("div", { cls: "ai-msg-role" });
+    roleEl.createSpan({ cls: "ai-loading-spinner" });
     const contentEl = aiBubble.createEl("div", {
       cls: "ai-msg-content",
       text: ""
     });
     const copyBtn = aiBubble.createEl("button", {
       cls: "ai-msg-copy",
-      text: "\u{1F4CB}",
       attr: { type: "button", title: "\u590D\u5236\u672C\u6761\u6D88\u606F" }
     });
+    (0, import_obsidian3.setIcon)(copyBtn, "copy");
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       copyText(acc);
@@ -689,6 +691,7 @@ ${blocks.join("\n\n---\n\n")}`;
             this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
           },
           onDone: (usage) => {
+            roleEl.setText("AI");
             this.messages.push({ role: "model", content: acc });
             if (usage) {
               this.sessionUsage.prompt += usage.promptTokens;
@@ -699,13 +702,14 @@ ${blocks.join("\n\n---\n\n")}`;
           },
           onError: (e) => {
             console.error("[Margin:chat] chat error", e);
+            roleEl.setText("AI");
             new import_obsidian3.Notice("\u9519\u8BEF\uFF1A" + e.message);
             contentEl.setText("\u26A0\uFE0F " + e.message);
             const retryBtn = aiBubble.createEl("button", {
               cls: "ai-msg-retry",
-              text: "\u21BB \u91CD\u65B0\u83B7\u53D6",
               attr: { type: "button", title: "\u91CD\u65B0\u83B7\u53D6\u8FD9\u4E00\u8F6E\u56DE\u7B54" }
             });
+            (0, import_obsidian3.setIcon)(retryBtn, "rotate-ccw");
             retryBtn.addEventListener("click", async (ev) => {
               ev.stopPropagation();
               aiBubble.remove();
@@ -741,7 +745,7 @@ ${blocks.join("\n\n---\n\n")}`;
 // src/selection/popover.ts
 var import_obsidian4 = require("obsidian");
 var Z_TOP = 2147483e3;
-var _SelectionPopover = class _SelectionPopover {
+var SelectionPopover = class {
   constructor(plugin, editor, selected) {
     __publicField(this, "plugin");
     __publicField(this, "editor");
@@ -756,6 +760,8 @@ var _SelectionPopover = class _SelectionPopover {
     __publicField(this, "actionsEl");
     __publicField(this, "usageEl");
     __publicField(this, "lastResult", "");
+    __publicField(this, "attachEl");
+    __publicField(this, "attachedNotes", []);
     __publicField(this, "busy", false);
     this.plugin = plugin;
     this.editor = editor;
@@ -766,11 +772,6 @@ var _SelectionPopover = class _SelectionPopover {
   open() {
     var _a, _b;
     this.noteKey = (_b = (_a = this.plugin.app.workspace.getActiveFile()) == null ? void 0 : _a.path) != null ? _b : "";
-    const saved = _SelectionPopover.savedByNote.get(this.noteKey);
-    if (saved) {
-      this.messages = [...saved.messages];
-      this.lastResult = saved.lastResult;
-    }
     const root = document.createElement("div");
     root.className = "ai-popover";
     root.style.zIndex = String(Z_TOP);
@@ -808,6 +809,8 @@ var _SelectionPopover = class _SelectionPopover {
     this.messagesEl = root.createDiv({ cls: "ai-popover-messages" });
     this.usageEl = root.createDiv({ cls: "ai-popover-usage" });
     this.actionsEl = root.createDiv({ cls: "ai-popover-actions" });
+    this.attachEl = root.createDiv({ cls: "ai-chat-attach" });
+    this.renderAttachedChips();
     const inputWrap = root.createDiv({ cls: "ai-popover-input-wrap" });
     this.inputEl = inputWrap.createEl("textarea", {
       cls: "ai-popover-input",
@@ -908,24 +911,19 @@ var _SelectionPopover = class _SelectionPopover {
     );
     document.addEventListener("touchend", end);
   }
-  /** 关闭时把对话存回笔记维度 */
+  /** 关闭悬浮窗（每次打开都是新对话，不保存） */
   close() {
     var _a;
-    if (this.noteKey && this.messages.length > 0) {
-      _SelectionPopover.savedByNote.set(this.noteKey, {
-        messages: [...this.messages],
-        lastResult: this.lastResult
-      });
-    }
     (_a = this.root) == null ? void 0 : _a.remove();
     this.root = void 0;
   }
-  /** 重来：清空本笔记对话与已存记录 */
+  /** 重来：清空本次对话与关联标签 */
   reset() {
     var _a;
     this.messages = [];
     this.lastResult = "";
-    _SelectionPopover.savedByNote.delete(this.noteKey);
+    this.attachedNotes = [];
+    this.renderAttachedChips();
     this.renderMessages();
     this.renderActions();
     this.renderUsage(null);
@@ -938,18 +936,19 @@ var _SelectionPopover = class _SelectionPopover {
       this.actionsEl.setText("");
       return;
     }
-    const mk = (label, icon, fn) => {
+    const mk = (label, iconId, fn) => {
       const b = this.actionsEl.createEl("button", {
         cls: "ai-popover-btn",
-        text: `${icon} ${label}`
+        attr: { type: "button", title: label }
       });
+      (0, import_obsidian4.setIcon)(b, iconId);
       b.addEventListener("click", fn);
     };
-    mk("\u63D2\u5165\u5149\u6807", "\u{1F4E5}", () => {
+    mk("\u63D2\u5165\u5149\u6807", "corner-down-left", () => {
       this.editor.replaceRange(this.lastResult, this.editor.getCursor());
       new import_obsidian4.Notice("\u5DF2\u63D2\u5165\u5230\u5149\u6807\u5904");
     });
-    mk("\u8986\u76D6\u9009\u533A", "\u{1F501}", () => {
+    mk("\u8986\u76D6\u9009\u533A", "refresh-cw", () => {
       this.editor.replaceRange(this.lastResult, this.from, this.to);
       new import_obsidian4.Notice("\u5DF2\u8986\u76D6\u9009\u533A");
     });
@@ -969,9 +968,9 @@ var _SelectionPopover = class _SelectionPopover {
       bubble.createDiv({ cls: "ai-popover-msg-content", text });
       const copyBtn = bubble.createEl("button", {
         cls: "ai-popover-msg-copy",
-        text: "\u{1F4CB}",
         attr: { type: "button", title: "\u590D\u5236\u672C\u6761\u6D88\u606F" }
       });
+      (0, import_obsidian4.setIcon)(copyBtn, "copy");
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         copyText(text);
@@ -1015,6 +1014,44 @@ var _SelectionPopover = class _SelectionPopover {
       (m) => m.id === this.plugin.settings.defaultModelId
     ) || this.plugin.settings.models[0];
   }
+  /** 渲染输入框内的关联笔记 chip（可删除） */
+  renderAttachedChips() {
+    if (!this.attachEl) return;
+    this.attachEl.empty();
+    if (this.attachedNotes.length === 0) return;
+    for (const n of this.attachedNotes) {
+      const chip = this.attachEl.createSpan({ cls: "ai-chat-attach-chip" });
+      chip.createSpan({ text: "[[" + n.basename + "]]" });
+      const rm = chip.createEl("button", {
+        cls: "ai-chat-attach-remove",
+        text: "\xD7",
+        attr: { type: "button", title: "\u79FB\u9664\u5173\u8054" }
+      });
+      rm.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.attachedNotes = this.attachedNotes.filter(
+          (x) => x.path !== n.path
+        );
+        this.renderAttachedChips();
+      });
+    }
+  }
+  /** 从消息文本解析 [[笔记名]]，resolve 成功后加入关联列表 */
+  attachRefsFromText(text) {
+    const re = /\[\[([^\]]+)\]\]/g;
+    let m;
+    let added = false;
+    while ((m = re.exec(text)) !== null) {
+      const name = m[1].trim();
+      if (!name) continue;
+      const f = this.plugin.app.metadataCache.getFirstLinkpathDest(name, "") || this.plugin.app.vault.getAbstractFileByPath(name);
+      if (!(f instanceof import_obsidian4.TFile)) continue;
+      if (this.attachedNotes.some((x) => x.path === f.path)) continue;
+      this.attachedNotes.push({ path: f.path, basename: f.basename });
+      added = true;
+    }
+    if (added) this.renderAttachedChips();
+  }
   async send() {
     var _a;
     const text = (_a = this.inputEl) == null ? void 0 : _a.value.trim();
@@ -1024,6 +1061,7 @@ var _SelectionPopover = class _SelectionPopover {
       new import_obsidian4.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0\u6A21\u578B");
       return;
     }
+    this.attachRefsFromText(text);
     if (this.messages.length === 0) {
       if (this.selected) {
         this.messages.push({
@@ -1059,22 +1097,47 @@ ${this.selected}
     const aiBubble = this.messagesEl.createDiv({
       cls: "ai-popover-msg ai-popover-msg-model"
     });
-    aiBubble.createDiv({ cls: "ai-popover-msg-role", text: "AI" });
+    const roleEl = aiBubble.createDiv({ cls: "ai-popover-msg-role" });
+    roleEl.createSpan({ cls: "ai-loading-spinner" });
     const contentEl = aiBubble.createDiv({
       cls: "ai-popover-msg-content",
       text: ""
     });
     const copyBtn = aiBubble.createEl("button", {
       cls: "ai-popover-msg-copy",
-      text: "\u{1F4CB}",
       attr: { type: "button", title: "\u590D\u5236\u672C\u6761\u6D88\u606F" }
     });
+    (0, import_obsidian4.setIcon)(copyBtn, "copy");
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       copyText(acc);
     });
     const provider = getProvider(model.provider);
     try {
+      let noteCtx = "";
+      if (this.attachedNotes.length > 0) {
+        const blocks = [];
+        for (const n of this.attachedNotes) {
+          const f = this.plugin.app.vault.getAbstractFileByPath(n.path);
+          if (!(f instanceof import_obsidian4.TFile)) continue;
+          try {
+            const content = await this.plugin.app.vault.cachedRead(f);
+            blocks.push(`[[${n.basename}]]
+
+${content}`);
+          } catch (err) {
+            console.warn("[Margin:popover] \u8BFB\u53D6\u5173\u8054\u7B14\u8BB0\u5931\u8D25", n.path, err);
+          }
+        }
+        if (blocks.length > 0) {
+          noteCtx = `
+
+# \u5173\u8054\u7B14\u8BB0
+${blocks.join("\n\n---\n\n")}`;
+        }
+      }
+      const sys = this.plugin.settings.systemInstruction;
+      const systemInstruction = (sys ? sys + "\n\n" : "") + noteCtx;
       await provider.chat(
         model,
         this.messages,
@@ -1085,6 +1148,7 @@ ${this.selected}
             this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
           },
           onDone: (u) => {
+            roleEl.setText("AI");
             this.messages.push({ role: "model", content: acc });
             this.lastResult = acc;
             this.renderActions();
@@ -1092,13 +1156,14 @@ ${this.selected}
           },
           onError: (e) => {
             console.error("[Margin:popover] chat error", e);
+            roleEl.setText("AI");
             new import_obsidian4.Notice("\u9519\u8BEF\uFF1A" + e.message);
             contentEl.setText("\u26A0\uFE0F " + e.message);
             const retryBtn = aiBubble.createEl("button", {
               cls: "ai-popover-msg-retry",
-              text: "\u21BB \u91CD\u65B0\u83B7\u53D6",
               attr: { type: "button", title: "\u91CD\u65B0\u83B7\u53D6\u8FD9\u4E00\u8F6E\u56DE\u7B54" }
             });
+            (0, import_obsidian4.setIcon)(retryBtn, "rotate-ccw");
             retryBtn.addEventListener("click", async (ev) => {
               ev.stopPropagation();
               aiBubble.remove();
@@ -1108,7 +1173,7 @@ ${this.selected}
             });
           }
         },
-        { systemInstruction: this.plugin.settings.systemInstruction }
+        { systemInstruction }
       );
     } finally {
       this.busy = false;
@@ -1135,9 +1200,6 @@ ${this.selected}
     }
   }
 };
-/** 按笔记路径保存对话，跨悬浮窗实例恢复 */
-__publicField(_SelectionPopover, "savedByNote", /* @__PURE__ */ new Map());
-var SelectionPopover = _SelectionPopover;
 
 // src/main.ts
 var AIPlugin = class extends import_obsidian5.Plugin {

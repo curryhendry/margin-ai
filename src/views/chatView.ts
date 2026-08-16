@@ -1,4 +1,4 @@
-import { EventRef, ItemView, WorkspaceLeaf, Notice, TFile } from "obsidian";
+import { EventRef, ItemView, WorkspaceLeaf, Notice, TFile, setIcon } from "obsidian";
 import type AIPlugin from "../main";
 import { ChatMessage, UsageInfo } from "../llm/types";
 import { getProvider } from "../llm";
@@ -147,8 +147,9 @@ export class ChatView extends ItemView {
 
     const newBtn = header.createEl("button", {
       cls: "ai-chat-clear",
-      text: "新对话",
+      attr: { type: "button", title: "新对话" },
     });
+    setIcon(newBtn, "plus");
     newBtn.addEventListener("click", () => {
       this.histories.delete(this.noteKey);
       this.usageByNote.delete(this.noteKey);
@@ -204,9 +205,9 @@ export class ChatView extends ItemView {
       // 复制（每条消息）
       const copyBtn = bubble.createEl("button", {
         cls: "ai-msg-copy",
-        text: "📋",
         attr: { type: "button", title: "复制本条消息" },
       });
+      setIcon(copyBtn, "copy");
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         copyText(m.content);
@@ -287,16 +288,17 @@ export class ChatView extends ItemView {
 
     let acc = "";
     const aiBubble = this.messagesEl.createDiv({ cls: "ai-msg ai-msg-model" });
-    aiBubble.createEl("div", { cls: "ai-msg-role", text: "AI" });
+    const roleEl = aiBubble.createEl("div", { cls: "ai-msg-role" });
+    roleEl.createSpan({ cls: "ai-loading-spinner" });
     const contentEl = aiBubble.createEl("div", {
       cls: "ai-msg-content",
       text: "",
     });
     const copyBtn = aiBubble.createEl("button", {
       cls: "ai-msg-copy",
-      text: "📋",
       attr: { type: "button", title: "复制本条消息" },
     });
+    setIcon(copyBtn, "copy");
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       copyText(acc);
@@ -335,6 +337,7 @@ export class ChatView extends ItemView {
             this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
           },
           onDone: (usage) => {
+            roleEl.setText("AI");
             this.messages.push({ role: "model", content: acc });
             if (usage) {
               this.sessionUsage.prompt += usage.promptTokens;
@@ -345,13 +348,14 @@ export class ChatView extends ItemView {
           },
           onError: (e) => {
             console.error("[Margin:chat] chat error", e);
+            roleEl.setText("AI");
             new Notice("错误：" + e.message);
             contentEl.setText("⚠️ " + e.message);
             const retryBtn = aiBubble.createEl("button", {
               cls: "ai-msg-retry",
-              text: "↻ 重新获取",
               attr: { type: "button", title: "重新获取这一轮回答" },
             });
+            setIcon(retryBtn, "rotate-ccw");
             retryBtn.addEventListener("click", async (ev) => {
               ev.stopPropagation();
               aiBubble.remove();

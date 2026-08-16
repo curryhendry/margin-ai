@@ -1,4 +1,4 @@
-import { Editor, Notice } from "obsidian";
+import { Editor, Notice, TFile, setIcon } from "obsidian";
 import type AIPlugin from "../main";
 import { ChatMessage, UsageInfo } from "../llm/types";
 import { getProvider } from "../llm";
@@ -8,21 +8,15 @@ import { copyText } from "../util";
 /** 置顶层级 */
 const Z_TOP = 2147483000;
 
-interface SavedConv {
-  messages: ChatMessage[];
-  lastResult: string;
-}
-
 /**
  * 划词 / `/p` 悬浮对话。交互参照 Copilot：
  * - 基于选区提问；结果可插入光标 / 覆盖选区
  * - 每条消息自带复制图标，用户消息可编辑重发
- * - 对话按笔记记忆：同一笔记再次打开悬浮窗，继续上次的对话
+ * - 每次打开都是新对话（针对当前选区的一次性问答）
+ * - 支持 [[笔记]] 关联标签（输入框内可删除）
  * - 可拖动头部；点外部不关闭（防丢失）；始终置顶
  */
 export class SelectionPopover {
-  /** 按笔记路径保存对话，跨悬浮窗实例恢复 */
-  private static savedByNote = new Map<string, SavedConv>();
 
   private plugin: AIPlugin;
   private editor: Editor;
@@ -37,6 +31,8 @@ export class SelectionPopover {
   private actionsEl?: HTMLElement;
   private usageEl?: HTMLElement;
   private lastResult = "";
+  private attachEl?: HTMLElement;
+  private attachedNotes: { path: string; basename: string }[] = [];
   private busy = false;
 
   constructor(plugin: AIPlugin, editor: Editor, selected: string) {
@@ -49,13 +45,6 @@ export class SelectionPopover {
 
   open(): void {
     this.noteKey = this.plugin.app.workspace.getActiveFile()?.path ?? "";
-
-    // 恢复该笔记上次的对话（若有）
-    const saved = SelectionPopover.savedByNote.get(this.noteKey);
-    if (saved) {
-      this.messages = [...saved.messages];
-      this.lastResult = saved.lastResult;
-    }
 
     const root = document.createElement("div");
     root.className = "ai-popover";
@@ -102,6 +91,10 @@ export class SelectionPopover {
     this.messagesEl = root.createDiv({ cls: "ai-popover-messages" });
     this.usageEl = root.createDiv({ cls: "ai-popover-usage" });
     this.actionsEl = root.createDiv({ cls: "ai-popover-actions" });
+
+    // 输入区上方的关联笔记标签区（可删除）
+    this.attachEl = root.createDiv({ cls: "ai-chat-attach" });
+    this.renderAttachedChips();
 
     // 输入区
     const inputWrap = root.createDiv({ cls: "ai-popover-input-wrap" });
@@ -216,23 +209,18 @@ export class SelectionPopover {
     document.addEventListener("touchend", end);
   }
 
-  /** 关闭时把对话存回笔记维度 */
+  /** 关闭悬浮窗（每次打开都是新对话，不保存） */
   close(): void {
-    if (this.noteKey && this.messages.length > 0) {
-      SelectionPopover.savedByNote.set(this.noteKey, {
-        messages: [...this.messages],
-        lastResult: this.lastResult,
-      });
-    }
     this.root?.remove();
     this.root = undefined;
   }
 
-  /** 重来：清空本笔记对话与已存记录 */
+  /** 重来：清空本次对话与关联标签 */
   private reset(): void {
     this.messages = [];
     this.lastResult = "";
-    SelectionPopover.savedByNote.delete(this.noteKey);
+    this.attachedNotes = [];
+    this.renderAttachedChips();
     this.renderMessages();
     this.renderActions();
     this.renderUsage(null);
@@ -246,20 +234,21 @@ export class SelectionPopover {
       this.actionsEl.setText("");
       return;
     }
-    const mk = (label: string, icon: string, fn: () => void): void => {
+    const mk = (label: string, iconId: string, fn: () => void): void => {
       const b = this.actionsEl!.createEl("button", {
         cls: "ai-popover-btn",
-        text: `${icon} ${label}`,
+        attr: { type: "button", title: label },
       });
+      setIcon(b, iconId);
       b.addEventListener("click", fn);
     };
 
-    mk("插入光标", "📥", () => {
+    mk("插入光标", "corner-down-left", () => {
       this.editor.replaceRange(this.lastResult, this.editor.getCursor());
       new Notice("已插入到光标处");
     });
 
-    mk("覆盖选区", "🔁", () => {
+    mk("覆盖选区", "refresh-cw", () => {
       this.editor.replaceRange(this.lastResult, this.from, this.to);
       new Notice("已覆盖选区");
     });
@@ -282,9 +271,9 @@ export class SelectionPopover {
       // 复制图标（每条消息）
       const copyBtn = bubble.createEl("button", {
         cls: "ai-popover-msg-copy",
-        text: "📋",
         attr: { type: "button", title: "复制本条消息" },
       });
+      setIcon(copyBtn, "copy");
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         copyText(text);
@@ -336,6 +325,48 @@ export class SelectionPopover {
     );
   }
 
+  /** 渲染输入框内的关联笔记 chip（可删除） */
+  private renderAttachedChips(): void {
+    if (!this.attachEl) return;
+    this.attachEl.empty();
+    if (this.attachedNotes.length === 0) return;
+    for (const n of this.attachedNotes) {
+      const chip = this.attachEl.createSpan({ cls: "ai-chat-attach-chip" });
+      chip.createSpan({ text: "[[" + n.basename + "]]" });
+      const rm = chip.createEl("button", {
+        cls: "ai-chat-attach-remove",
+        text: "×",
+        attr: { type: "button", title: "移除关联" },
+      });
+      rm.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.attachedNotes = this.attachedNotes.filter(
+          (x) => x.path !== n.path
+        );
+        this.renderAttachedChips();
+      });
+    }
+  }
+
+  /** 从消息文本解析 [[笔记名]]，resolve 成功后加入关联列表 */
+  private attachRefsFromText(text: string): void {
+    const re = /\[\[([^\]]+)\]\]/g;
+    let m: RegExpExecArray | null;
+    let added = false;
+    while ((m = re.exec(text)) !== null) {
+      const name = m[1].trim();
+      if (!name) continue;
+      const f =
+        this.plugin.app.metadataCache.getFirstLinkpathDest(name, "") ||
+        this.plugin.app.vault.getAbstractFileByPath(name);
+      if (!(f instanceof TFile)) continue;
+      if (this.attachedNotes.some((x) => x.path === f.path)) continue;
+      this.attachedNotes.push({ path: f.path, basename: f.basename });
+      added = true;
+    }
+    if (added) this.renderAttachedChips();
+  }
+
   private async send(): Promise<void> {
     const text = this.inputEl?.value.trim();
     if (!text || this.busy) return;
@@ -344,6 +375,8 @@ export class SelectionPopover {
       new Notice("请先在设置中添加模型");
       return;
     }
+    // 解析 [[笔记名]] → 加入输入框关联 chip（可删除）
+    this.attachRefsFromText(text);
 
     if (this.messages.length === 0) {
       if (this.selected) {
@@ -383,16 +416,17 @@ export class SelectionPopover {
     const aiBubble = this.messagesEl!.createDiv({
       cls: "ai-popover-msg ai-popover-msg-model",
     });
-    aiBubble.createDiv({ cls: "ai-popover-msg-role", text: "AI" });
+    const roleEl = aiBubble.createDiv({ cls: "ai-popover-msg-role" });
+    roleEl.createSpan({ cls: "ai-loading-spinner" });
     const contentEl = aiBubble.createDiv({
       cls: "ai-popover-msg-content",
       text: "",
     });
     const copyBtn = aiBubble.createEl("button", {
       cls: "ai-popover-msg-copy",
-      text: "📋",
       attr: { type: "button", title: "复制本条消息" },
     });
+    setIcon(copyBtn, "copy");
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       copyText(acc);
@@ -400,6 +434,27 @@ export class SelectionPopover {
 
     const provider = getProvider(model.provider);
     try {
+      // 关联笔记上下文（输入框内可删除标签）
+      let noteCtx = "";
+      if (this.attachedNotes.length > 0) {
+        const blocks: string[] = [];
+        for (const n of this.attachedNotes) {
+          const f = this.plugin.app.vault.getAbstractFileByPath(n.path);
+          if (!(f instanceof TFile)) continue;
+          try {
+            const content = await this.plugin.app.vault.cachedRead(f);
+            blocks.push(`[[${n.basename}]]\n\n${content}`);
+          } catch (err) {
+            console.warn("[Margin:popover] 读取关联笔记失败", n.path, err);
+          }
+        }
+        if (blocks.length > 0) {
+          noteCtx = `\n\n# 关联笔记\n${blocks.join("\n\n---\n\n")}`;
+        }
+      }
+      const sys = this.plugin.settings.systemInstruction;
+      const systemInstruction = (sys ? sys + "\n\n" : "") + noteCtx;
+
       await provider.chat(
         model,
         this.messages,
@@ -410,6 +465,7 @@ export class SelectionPopover {
             this.messagesEl!.scrollTop = this.messagesEl!.scrollHeight;
           },
           onDone: (u: UsageInfo | null) => {
+            roleEl.setText("AI");
             this.messages.push({ role: "model", content: acc });
             this.lastResult = acc;
             this.renderActions();
@@ -417,13 +473,14 @@ export class SelectionPopover {
           },
           onError: (e) => {
             console.error("[Margin:popover] chat error", e);
+            roleEl.setText("AI");
             new Notice("错误：" + e.message);
             contentEl.setText("⚠️ " + e.message);
             const retryBtn = aiBubble.createEl("button", {
               cls: "ai-popover-msg-retry",
-              text: "↻ 重新获取",
               attr: { type: "button", title: "重新获取这一轮回答" },
             });
+            setIcon(retryBtn, "rotate-ccw");
             retryBtn.addEventListener("click", async (ev) => {
               ev.stopPropagation();
               aiBubble.remove();
@@ -433,7 +490,7 @@ export class SelectionPopover {
             });
           },
         },
-        { systemInstruction: this.plugin.settings.systemInstruction }
+        { systemInstruction }
       );
     } finally {
       this.busy = false;

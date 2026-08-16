@@ -62,9 +62,12 @@
   background: var(--background-modifier-error, rgba(200, 60, 60, 0.25));
 }
 .ai-chat-clear {
-  font-size: 11px;
-  padding: 2px 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
   height: 24px;
+  padding: 0;
   opacity: 0.8;
   border-radius: 6px;
   flex-shrink: 0;
@@ -107,13 +110,15 @@
 .ai-msg-edit {
   position: absolute;
   top: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   cursor: pointer;
   opacity: 0;
-  font-size: 10.5px;
   line-height: 1;
-  padding: 2px 4px;
+  padding: 2px;
   border-radius: 4px;
   color: var(--text-muted, #999);
   transition: opacity 0.12s;
@@ -303,13 +308,15 @@
 .ai-popover-msg-edit {
   position: absolute;
   top: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   cursor: pointer;
   opacity: 0;
-  font-size: 10px;
   line-height: 1;
-  padding: 2px 4px;
+  padding: 2px;
   border-radius: 4px;
   color: var(--text-muted, #999);
   transition: opacity 0.12s;
@@ -348,8 +355,12 @@
   margin-top: 5px;
 }
 .ai-popover-btn {
-  font-size: 11px;
-  padding: 3px 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
   border-radius: 6px;
   cursor: pointer;
 }
@@ -544,13 +555,16 @@
   margin: 3px 0;
 }
 
-/* ---------- 失败重取按钮 ---------- */
+/* ---------- 失败重取按钮（图标） ---------- */
 .ai-msg-retry,
 .ai-popover-msg-retry {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-top: 6px;
-  padding: 3px 10px;
-  font-size: 11px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
   border-radius: 6px;
   border: 1px solid var(--background-modifier-border, #555);
   background: var(--background-secondary, rgba(127, 127, 127, 0.15));
@@ -563,4 +577,34 @@
 .ai-popover-msg-retry:hover {
   opacity: 1;
   background: var(--background-modifier-hover, rgba(127, 127, 127, 0.25));
+}
+
+/* ---------- AI 生成中的加载指示 ---------- */
+.ai-loading-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--text-muted, #999);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: ai-spin 0.7s linear infinite;
+  vertical-align: -1px;
+}
+@keyframes ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- 图标按钮里的 SVG 尺寸 ---------- */
+.ai-msg-copy svg,
+.ai-msg-edit svg,
+.ai-popover-msg-copy svg,
+.ai-popover-msg-edit svg,
+.ai-msg-retry svg,
+.ai-popover-msg-retry svg,
+.ai-chat-clear svg,
+.ai-popover-btn svg {
+  width: 14px;
+  height: 14px;
 }
