@@ -3,6 +3,7 @@ import type AIPlugin from "../main";
 import { ChatMessage, UsageInfo } from "../llm/types";
 import { getProvider } from "../llm";
 import { modelLimitsText } from "../settings";
+import { copyText } from "../util";
 
 /** 置顶层级 */
 const Z_TOP = 2147483000;
@@ -146,7 +147,7 @@ export class SelectionPopover {
 
   private position(rect: DOMRect | null): void {
     if (!this.root) return;
-    const w = 360;
+    const w = Math.min(360, window.innerWidth - 16);
     const h = 420;
     let x = rect ? rect.left : window.innerWidth / 2 - w / 2;
     let y = rect ? rect.bottom + 8 : window.innerHeight / 2 - h / 2;
@@ -164,31 +165,55 @@ export class SelectionPopover {
     let origX = 0;
     let origY = 0;
 
-    header.addEventListener("mousedown", (e) => {
-      if ((e.target as HTMLElement).closest(".ai-popover-close, .ai-popover-reset")) {
-        return;
-      }
+    const isBtn = (t: EventTarget | null): boolean =>
+      !!(t as HTMLElement)?.closest?.(".ai-popover-close, .ai-popover-reset");
+
+    const begin = (cx: number, cy: number): void => {
       dragging = true;
-      startX = e.clientX;
-      startY = e.clientY;
+      startX = cx;
+      startY = cy;
       origX = this.root?.offsetLeft ?? 0;
       origY = this.root?.offsetTop ?? 0;
-      e.preventDefault();
-    });
-
-    document.addEventListener("mousemove", (e) => {
+    };
+    const move = (cx: number, cy: number): void => {
       if (!dragging || !this.root) return;
-      let x = origX + (e.clientX - startX);
-      let y = origY + (e.clientY - startY);
+      let x = origX + (cx - startX);
+      let y = origY + (cy - startY);
       x = Math.max(0, Math.min(x, window.innerWidth - this.root.offsetWidth));
       y = Math.max(0, Math.min(y, window.innerHeight - this.root.offsetHeight));
       this.root.style.left = x + "px";
       this.root.style.top = y + "px";
-    });
-
-    document.addEventListener("mouseup", () => {
+    };
+    const end = (): void => {
       dragging = false;
+    };
+
+    // 桌面端：鼠标拖动
+    header.addEventListener("mousedown", (e) => {
+      if (isBtn(e.target)) return;
+      begin(e.clientX, e.clientY);
+      e.preventDefault();
     });
+    document.addEventListener("mousemove", (e) => move(e.clientX, e.clientY));
+    document.addEventListener("mouseup", end);
+
+    // 移动端：触摸拖动
+    header.addEventListener("touchstart", (e) => {
+      if (isBtn(e.target) || !e.touches[0]) return;
+      begin(e.touches[0].clientX, e.touches[0].clientY);
+      e.preventDefault();
+    });
+    document.addEventListener(
+      "touchmove",
+      (e) => {
+        if (dragging && e.touches[0]) {
+          move(e.touches[0].clientX, e.touches[0].clientY);
+          e.preventDefault();
+        }
+      },
+      { passive: false }
+    );
+    document.addEventListener("touchend", end);
   }
 
   /** 关闭时把对话存回笔记维度 */
@@ -262,8 +287,7 @@ export class SelectionPopover {
       });
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        navigator.clipboard.writeText(text);
-        new Notice("已复制");
+        copyText(text);
       });
 
       // 用户消息可编辑重发
@@ -351,8 +375,7 @@ export class SelectionPopover {
     });
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      navigator.clipboard.writeText(acc);
-      new Notice("已复制");
+      copyText(acc);
     });
 
     const provider = getProvider(model.provider);

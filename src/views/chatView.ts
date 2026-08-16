@@ -3,6 +3,7 @@ import type AIPlugin from "../main";
 import { ChatMessage, UsageInfo } from "../llm/types";
 import { getProvider } from "../llm";
 import { modelLimitsText } from "../settings";
+import { copyText } from "../util";
 
 export const VIEW_TYPE_CHAT = "margin-chat";
 
@@ -181,8 +182,7 @@ export class ChatView extends ItemView {
       });
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        navigator.clipboard.writeText(m.content);
-        new Notice("已复制");
+        copyText(m.content);
       });
 
       // 用户消息可编辑重发
@@ -232,8 +232,7 @@ export class ChatView extends ItemView {
     });
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      navigator.clipboard.writeText(acc);
-      new Notice("已复制");
+      copyText(acc);
     });
 
     const provider = getProvider(model.provider);

@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, Editor, Menu, Notice } from "obsidian";
+import { Plugin, WorkspaceLeaf, Editor, Menu, Notice, MarkdownView } from "obsidian";
 import {
   AIPluginSettings,
   DEFAULT_SETTINGS,
@@ -6,7 +6,6 @@ import {
 } from "./settings";
 import { ChatView, VIEW_TYPE_CHAT } from "./views/chatView";
 import { SelectionPopover } from "./selection/popover";
-import { registerSlashCommand } from "./slash";
 
 export default class AIPlugin extends Plugin {
   declare settings: AIPluginSettings;
@@ -52,9 +51,18 @@ export default class AIPlugin extends Plugin {
 
     this.addSettingTab(new AISettingsTab(this.app, this));
 
-    // `/p` 斜杠命令 → 悬浮对话
-    registerSlashCommand(this, (editor, selected) => {
-      new SelectionPopover(this, editor, selected).open();
+    // Cmd+P 命令面板 → 打开悬浮对话（带当前选区；无选区也可）
+    this.addCommand({
+      id: "open-margin-popover",
+      name: "打开 Margin 悬浮对话",
+      callback: () => {
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!view) {
+          new Notice("当前没有打开的笔记");
+          return;
+        }
+        new SelectionPopover(this, view.editor, view.editor.getSelection()).open();
+      },
     });
 
     // 设置变更后通知已打开的 chat 视图刷新模型列表

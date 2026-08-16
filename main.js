@@ -28,7 +28,7 @@ __export(main_exports, {
   default: () => AIPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 
 // src/settings.ts
 var import_obsidian = require("obsidian");
@@ -365,7 +365,7 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
 };
 
 // src/views/chatView.ts
-var import_obsidian2 = require("obsidian");
+var import_obsidian3 = require("obsidian");
 
 // src/llm/index.ts
 var providers = {
@@ -377,9 +377,37 @@ function getProvider(id) {
   return p;
 }
 
+// src/util.ts
+var import_obsidian2 = require("obsidian");
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      new import_obsidian2.Notice("\u5DF2\u590D\u5236");
+      return;
+    } catch (e) {
+    }
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+    new import_obsidian2.Notice("\u5DF2\u590D\u5236");
+  } catch (e) {
+    new import_obsidian2.Notice("\u590D\u5236\u5931\u8D25");
+  }
+}
+
 // src/views/chatView.ts
 var VIEW_TYPE_CHAT = "margin-chat";
-var ChatView = class extends import_obsidian2.ItemView {
+var ChatView = class extends import_obsidian3.ItemView {
   constructor(leaf, plugin) {
     super(leaf);
     __publicField(this, "plugin");
@@ -522,8 +550,7 @@ var ChatView = class extends import_obsidian2.ItemView {
       });
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        navigator.clipboard.writeText(m.content);
-        new import_obsidian2.Notice("\u5DF2\u590D\u5236");
+        copyText(m.content);
       });
       if (m.role === "user") {
         const editBtn = bubble.createEl("button", {
@@ -548,7 +575,7 @@ var ChatView = class extends import_obsidian2.ItemView {
     if (!text || this.busy) return;
     const model = this.currentModel();
     if (!model) {
-      new import_obsidian2.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0 Gemini \u6A21\u578B");
+      new import_obsidian3.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0 Gemini \u6A21\u578B");
       return;
     }
     this.inputEl.value = "";
@@ -569,8 +596,7 @@ var ChatView = class extends import_obsidian2.ItemView {
     });
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      navigator.clipboard.writeText(acc);
-      new import_obsidian2.Notice("\u5DF2\u590D\u5236");
+      copyText(acc);
     });
     const provider = getProvider(model.provider);
     try {
@@ -593,7 +619,7 @@ var ChatView = class extends import_obsidian2.ItemView {
             this.showUsage(usage);
           },
           onError: (e) => {
-            new import_obsidian2.Notice("\u9519\u8BEF\uFF1A" + e.message);
+            new import_obsidian3.Notice("\u9519\u8BEF\uFF1A" + e.message);
             contentEl.setText("\u26A0\uFE0F " + e.message);
           }
         },
@@ -621,7 +647,7 @@ var ChatView = class extends import_obsidian2.ItemView {
 };
 
 // src/selection/popover.ts
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 var Z_TOP = 2147483e3;
 var _SelectionPopover = class _SelectionPopover {
   constructor(plugin, editor, selected) {
@@ -726,7 +752,7 @@ var _SelectionPopover = class _SelectionPopover {
   }
   position(rect) {
     if (!this.root) return;
-    const w = 360;
+    const w = Math.min(360, window.innerWidth - 16);
     const h = 420;
     let x = rect ? rect.left : window.innerWidth / 2 - w / 2;
     let y = rect ? rect.bottom + 8 : window.innerHeight / 2 - h / 2;
@@ -742,30 +768,53 @@ var _SelectionPopover = class _SelectionPopover {
     let startY = 0;
     let origX = 0;
     let origY = 0;
-    header.addEventListener("mousedown", (e) => {
+    const isBtn = (t) => {
+      var _a;
+      return !!((_a = t == null ? void 0 : t.closest) == null ? void 0 : _a.call(t, ".ai-popover-close, .ai-popover-reset"));
+    };
+    const begin = (cx, cy) => {
       var _a, _b, _c, _d;
-      if (e.target.closest(".ai-popover-close, .ai-popover-reset")) {
-        return;
-      }
       dragging = true;
-      startX = e.clientX;
-      startY = e.clientY;
+      startX = cx;
+      startY = cy;
       origX = (_b = (_a = this.root) == null ? void 0 : _a.offsetLeft) != null ? _b : 0;
       origY = (_d = (_c = this.root) == null ? void 0 : _c.offsetTop) != null ? _d : 0;
-      e.preventDefault();
-    });
-    document.addEventListener("mousemove", (e) => {
+    };
+    const move = (cx, cy) => {
       if (!dragging || !this.root) return;
-      let x = origX + (e.clientX - startX);
-      let y = origY + (e.clientY - startY);
+      let x = origX + (cx - startX);
+      let y = origY + (cy - startY);
       x = Math.max(0, Math.min(x, window.innerWidth - this.root.offsetWidth));
       y = Math.max(0, Math.min(y, window.innerHeight - this.root.offsetHeight));
       this.root.style.left = x + "px";
       this.root.style.top = y + "px";
-    });
-    document.addEventListener("mouseup", () => {
+    };
+    const end = () => {
       dragging = false;
+    };
+    header.addEventListener("mousedown", (e) => {
+      if (isBtn(e.target)) return;
+      begin(e.clientX, e.clientY);
+      e.preventDefault();
     });
+    document.addEventListener("mousemove", (e) => move(e.clientX, e.clientY));
+    document.addEventListener("mouseup", end);
+    header.addEventListener("touchstart", (e) => {
+      if (isBtn(e.target) || !e.touches[0]) return;
+      begin(e.touches[0].clientX, e.touches[0].clientY);
+      e.preventDefault();
+    });
+    document.addEventListener(
+      "touchmove",
+      (e) => {
+        if (dragging && e.touches[0]) {
+          move(e.touches[0].clientX, e.touches[0].clientY);
+          e.preventDefault();
+        }
+      },
+      { passive: false }
+    );
+    document.addEventListener("touchend", end);
   }
   /** 关闭时把对话存回笔记维度 */
   close() {
@@ -806,11 +855,11 @@ var _SelectionPopover = class _SelectionPopover {
     };
     mk("\u63D2\u5165\u5149\u6807", "\u{1F4E5}", () => {
       this.editor.replaceRange(this.lastResult, this.editor.getCursor());
-      new import_obsidian3.Notice("\u5DF2\u63D2\u5165\u5230\u5149\u6807\u5904");
+      new import_obsidian4.Notice("\u5DF2\u63D2\u5165\u5230\u5149\u6807\u5904");
     });
     mk("\u8986\u76D6\u9009\u533A", "\u{1F501}", () => {
       this.editor.replaceRange(this.lastResult, this.from, this.to);
-      new import_obsidian3.Notice("\u5DF2\u8986\u76D6\u9009\u533A");
+      new import_obsidian4.Notice("\u5DF2\u8986\u76D6\u9009\u533A");
     });
   }
   renderMessages() {
@@ -833,8 +882,7 @@ var _SelectionPopover = class _SelectionPopover {
       });
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        navigator.clipboard.writeText(text);
-        new import_obsidian3.Notice("\u5DF2\u590D\u5236");
+        copyText(text);
       });
       if (m.role === "user") {
         const editBtn = bubble.createEl("button", {
@@ -878,7 +926,7 @@ var _SelectionPopover = class _SelectionPopover {
       (m) => m.id === this.plugin.settings.defaultModelId
     ) || this.plugin.settings.models[0];
     if (!model) {
-      new import_obsidian3.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0 Gemini \u6A21\u578B");
+      new import_obsidian4.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0 Gemini \u6A21\u578B");
       return;
     }
     if (this.messages.length === 0) {
@@ -917,8 +965,7 @@ ${this.selected}
     });
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      navigator.clipboard.writeText(acc);
-      new import_obsidian3.Notice("\u5DF2\u590D\u5236");
+      copyText(acc);
     });
     const provider = getProvider(model.provider);
     try {
@@ -938,7 +985,7 @@ ${this.selected}
             this.renderUsage(u);
           },
           onError: (e) => {
-            new import_obsidian3.Notice("\u9519\u8BEF\uFF1A" + e.message);
+            new import_obsidian4.Notice("\u9519\u8BEF\uFF1A" + e.message);
             contentEl.setText("\u26A0\uFE0F " + e.message);
           }
         },
@@ -973,72 +1020,8 @@ ${this.selected}
 __publicField(_SelectionPopover, "savedByNote", /* @__PURE__ */ new Map());
 var SelectionPopover = _SelectionPopover;
 
-// src/slash.ts
-var Z_TOP2 = 2147483e3;
-function registerSlashCommand(plugin, openPopover) {
-  let menu = null;
-  let pending = null;
-  const close = () => {
-    menu == null ? void 0 : menu.remove();
-    menu = null;
-    pending = null;
-  };
-  const placeMenu = (editor, line, ch) => {
-    pending = { editor, line, ch };
-    if (menu) menu.remove();
-    menu = document.body.createDiv({ cls: "ai-slash-menu" });
-    menu.style.zIndex = String(Z_TOP2);
-    const item = menu.createDiv({ cls: "ai-slash-item" });
-    item.createSpan({ text: "\u2726 Margin \u60AC\u6D6E\u5BF9\u8BDD" });
-    item.addEventListener("click", () => {
-      const p = pending;
-      close();
-      if (!p) return;
-      p.editor.replaceRange(
-        "",
-        { line: p.line, ch: p.ch - 2 },
-        { line: p.line, ch: p.ch }
-      );
-      openPopover(p.editor, p.editor.getSelection());
-    });
-    const sel = window.getSelection();
-    let left = 120;
-    let top = 120;
-    if (sel && sel.rangeCount > 0) {
-      const r = sel.getRangeAt(0).getBoundingClientRect();
-      if (r && (r.width > 0 || r.height > 0)) {
-        left = Math.max(8, r.left);
-        top = Math.max(8, r.bottom + 6);
-      }
-    }
-    menu.style.left = left + "px";
-    menu.style.top = top + "px";
-  };
-  plugin.registerEvent(
-    plugin.app.workspace.on("editor-change", (editor) => {
-      const cursor = editor.getCursor();
-      if (cursor.ch < 2) {
-        if (menu) close();
-        return;
-      }
-      const lineText = editor.getLine(cursor.line).slice(0, cursor.ch);
-      if (lineText.endsWith("/p")) {
-        placeMenu(editor, cursor.line, cursor.ch);
-      } else if (menu) {
-        close();
-      }
-    })
-  );
-  plugin.registerDomEvent(document, "keydown", (e) => {
-    if (e.key === "Escape") close();
-  });
-  plugin.registerDomEvent(document, "mousedown", (e) => {
-    if (menu && !menu.contains(e.target)) close();
-  });
-}
-
 // src/main.ts
-var AIPlugin = class extends import_obsidian4.Plugin {
+var AIPlugin = class extends import_obsidian5.Plugin {
   async onload() {
     await this.loadSettings();
     this.registerView(VIEW_TYPE_CHAT, (leaf) => new ChatView(leaf, this));
@@ -1070,8 +1053,17 @@ var AIPlugin = class extends import_obsidian4.Plugin {
       )
     );
     this.addSettingTab(new AISettingsTab(this.app, this));
-    registerSlashCommand(this, (editor, selected) => {
-      new SelectionPopover(this, editor, selected).open();
+    this.addCommand({
+      id: "open-margin-popover",
+      name: "\u6253\u5F00 Margin \u60AC\u6D6E\u5BF9\u8BDD",
+      callback: () => {
+        const view = this.app.workspace.getActiveViewOfType(import_obsidian5.MarkdownView);
+        if (!view) {
+          new import_obsidian5.Notice("\u5F53\u524D\u6CA1\u6709\u6253\u5F00\u7684\u7B14\u8BB0");
+          return;
+        }
+        new SelectionPopover(this, view.editor, view.editor.getSelection()).open();
+      }
     });
     this.registerEvent(
       this.app.workspace.on("margin:settings-changed", () => {
