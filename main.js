@@ -420,7 +420,8 @@ var ChatView = class extends import_obsidian3.ItemView {
     __publicField(this, "inputEl");
     __publicField(this, "modelSelect");
     __publicField(this, "usageEl");
-    __publicField(this, "noteChipEl");
+    __publicField(this, "attachEl");
+    __publicField(this, "attachedNotes", []);
     __publicField(this, "busy", false);
     __publicField(this, "sessionUsage", { prompt: 0, completion: 0, total: 0 });
     this.plugin = plugin;
@@ -438,7 +439,6 @@ var ChatView = class extends import_obsidian3.ItemView {
     this.render();
     this.noteKey = this.currentNote();
     this.loadNote();
-    this.updateNoteChip();
     this.fileOpenRef = this.app.workspace.on(
       "file-open",
       () => this.switchNote()
@@ -464,26 +464,32 @@ var ChatView = class extends import_obsidian3.ItemView {
     this.renderMessages();
     this.showUsage(null);
   }
-  /** 刷新头部 wikilink chip：显示当前关联笔记 basename，点击跳转 */
-  updateNoteChip() {
-    if (!this.noteChipEl) return;
-    if (!this.noteKey || this.noteKey === "(\u65E0\u7B14\u8BB0)") {
-      this.noteChipEl.setText("\u672A\u5173\u8054\u7B14\u8BB0");
-      this.noteChipEl.removeAttribute("title");
-      this.noteChipEl.addClass("is-empty");
-      return;
+  /** 渲染输入框内的关联笔记 chip（可删除） */
+  renderAttachedChips() {
+    if (!this.attachEl) return;
+    this.attachEl.empty();
+    if (this.attachedNotes.length === 0) return;
+    for (const n of this.attachedNotes) {
+      const chip = this.attachEl.createSpan({ cls: "ai-chat-attach-chip" });
+      chip.createSpan({ text: "[[" + n.basename + "]]" });
+      const rm = chip.createEl("button", {
+        cls: "ai-chat-attach-remove",
+        text: "\xD7",
+        attr: { type: "button", title: "\u79FB\u9664\u5173\u8054" }
+      });
+      rm.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.attachedNotes = this.attachedNotes.filter(
+          (x) => x.path !== n.path
+        );
+        this.renderAttachedChips();
+      });
     }
-    const f = this.app.vault.getAbstractFileByPath(this.noteKey);
-    const name = f instanceof import_obsidian3.TFile ? f.basename : this.noteKey;
-    this.noteChipEl.setText("[[" + name + "]]");
-    this.noteChipEl.setAttribute("title", this.noteKey);
-    this.noteChipEl.removeClass("is-empty");
   }
   switchNote() {
     this.saveNote();
     this.noteKey = this.currentNote();
     this.loadNote();
-    this.updateNoteChip();
   }
   /** 设置变更后刷新模型下拉 */
   refreshModels() {
@@ -515,14 +521,6 @@ var ChatView = class extends import_obsidian3.ItemView {
     });
     this.populateModels();
     this.modelSelect.addEventListener("change", () => this.showUsage(null));
-    this.noteChipEl = header.createEl("a", {
-      cls: "ai-chat-note-chip"
-    });
-    this.noteChipEl.addEventListener("click", () => {
-      if (!this.noteKey || this.noteKey === "(\u65E0\u7B14\u8BB0)") return;
-      this.app.workspace.openLinkText(this.noteKey, "");
-    });
-    this.updateNoteChip();
     const newBtn = header.createEl("button", {
       cls: "ai-chat-clear",
       text: "\u65B0\u5BF9\u8BDD"
@@ -532,12 +530,16 @@ var ChatView = class extends import_obsidian3.ItemView {
       this.usageByNote.delete(this.noteKey);
       this.messages = [];
       this.sessionUsage = { prompt: 0, completion: 0, total: 0 };
+      this.attachedNotes = [];
+      this.renderAttachedChips();
       this.renderMessages();
       this.showUsage(null);
     });
     this.messagesEl = root.createDiv({ cls: "ai-chat-messages" });
     this.usageEl = root.createDiv({ cls: "ai-chat-usage" });
     this.showUsage(null);
+    this.attachEl = root.createDiv({ cls: "ai-chat-attach" });
+    this.renderAttachedChips();
     const inputWrap = root.createDiv({ cls: "ai-chat-input-wrap" });
     this.inputEl = inputWrap.createEl("textarea", {
       cls: "ai-chat-input",
@@ -602,15 +604,31 @@ var ChatView = class extends import_obsidian3.ItemView {
       new import_obsidian3.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0\u6A21\u578B");
       return;
     }
+    this.attachRefsFromText(text);
     this.inputEl.value = "";
     this.messages.push({ role: "user", content: text });
     this.renderMessages();
     await this.runAssistantTurn(model);
   }
+  /** 从消息文本解析 [[笔记名]]，resolve 成功后加入关联列表 */
+  attachRefsFromText(text) {
+    const re = /\[\[([^\]]+)\]\]/g;
+    let m;
+    let added = false;
+    while ((m = re.exec(text)) !== null) {
+      const name = m[1].trim();
+      if (!name) continue;
+      const f = this.app.metadataCache.getFirstLinkpathDest(name, "") || this.app.vault.getAbstractFileByPath(name);
+      if (!(f instanceof import_obsidian3.TFile)) continue;
+      if (this.attachedNotes.some((x) => x.path === f.path)) continue;
+      this.attachedNotes.push({ path: f.path, basename: f.basename });
+      added = true;
+    }
+    if (added) this.renderAttachedChips();
+  }
   /**
    * 流式生成 AI 回复。send 与「重新获取」共用。
-   * 把当前关联笔记的全文作为上下文（system instruction）发给 AI，
-   * 使 Chat 真正"关联"到笔记内容（不仅按笔记记忆）。
+   * 把输入框内已关联（可删除）的笔记内容作为上下文（system instruction）发给 AI。
    * 失败时在气泡上加「↻ 重新获取」按钮，点击重跑这一轮（不清空历史）。
    * 对所有供应商生效。
    */
@@ -639,51 +657,25 @@ var ChatView = class extends import_obsidian3.ItemView {
     try {
       const sys = this.plugin.settings.systemInstruction;
       let noteCtx = "";
-      if (this.noteKey && this.noteKey !== "(\u65E0\u7B14\u8BB0)") {
-        const f = this.app.vault.getAbstractFileByPath(this.noteKey);
-        if (f instanceof import_obsidian3.TFile) {
+      if (this.attachedNotes.length > 0) {
+        const blocks = [];
+        for (const n of this.attachedNotes) {
+          const f = this.app.vault.getAbstractFileByPath(n.path);
+          if (!(f instanceof import_obsidian3.TFile)) continue;
           try {
             const content = await this.app.vault.cachedRead(f);
-            noteCtx += `
-
-# \u5F53\u524D\u5173\u8054\u7B14\u8BB0
-\u8DEF\u5F84\uFF1A${this.noteKey}
-
-${content}`;
-          } catch (err) {
-            console.warn("[Margin:chat] \u8BFB\u53D6\u5173\u8054\u7B14\u8BB0\u5185\u5BB9\u5931\u8D25", err);
-          }
-        }
-      }
-      if (this.messages.length > 0) {
-        const last = this.messages[this.messages.length - 1];
-        if (last.role === "user") {
-          const re = /\[\[([^\]]+)\]\]/g;
-          let m;
-          const seen = /* @__PURE__ */ new Set();
-          const blocks = [];
-          while ((m = re.exec(last.content)) !== null) {
-            const name = m[1].trim();
-            if (!name || seen.has(name)) continue;
-            seen.add(name);
-            const f = this.app.metadataCache.getFirstLinkpathDest(name, "") || this.app.vault.getAbstractFileByPath(name);
-            if (f instanceof import_obsidian3.TFile) {
-              try {
-                const content = await this.app.vault.cachedRead(f);
-                blocks.push(`[[${name}]]
+            blocks.push(`[[${n.basename}]]
 
 ${content}`);
-              } catch (err) {
-                console.warn("[Margin:chat] \u8BFB\u53D6\u5F15\u7528\u7B14\u8BB0\u5931\u8D25", name, err);
-              }
-            }
+          } catch (err) {
+            console.warn("[Margin:chat] \u8BFB\u53D6\u5173\u8054\u7B14\u8BB0\u5931\u8D25", n.path, err);
           }
-          if (blocks.length > 0) {
-            noteCtx += `
+        }
+        if (blocks.length > 0) {
+          noteCtx += `
 
-# \u5F15\u7528\u7B14\u8BB0
+# \u5173\u8054\u7B14\u8BB0
 ${blocks.join("\n\n---\n\n")}`;
-          }
         }
       }
       const systemInstruction = (sys ? sys + "\n\n" : "") + noteCtx;
@@ -729,9 +721,7 @@ ${blocks.join("\n\n---\n\n")}`;
       this.busy = false;
     }
   }
-  /**
-   * 用量 / 配额。上行模型+限额；中间上下文/输出进度条（余量）；下行会话+本次
-   */
+  /** 用量 / 模型限额。两行：上行模型+限额，下行会话+本次用量 */
   showUsage(u) {
     var _a;
     this.usageEl.empty();
@@ -739,34 +729,6 @@ ${blocks.join("\n\n---\n\n")}`;
     const limits = m ? modelLimitsText(m) : "";
     const row1 = this.usageEl.createDiv({ cls: "ai-chat-usage-line" });
     row1.setText(`${(_a = m == null ? void 0 : m.name) != null ? _a : "\u672A\u9009\u6A21\u578B"}${limits ? " \xB7 " + limits : ""}`);
-    if (m == null ? void 0 : m.inputTokenLimit) {
-      const used = this.sessionUsage.prompt;
-      const limit = m.inputTokenLimit;
-      const pct = Math.min(100, Math.round(used / limit * 100));
-      const remain = Math.max(0, limit - used);
-      const wrap = this.usageEl.createDiv({ cls: "ai-quota" });
-      wrap.createSpan({ cls: "ai-quota-label", text: "\u4E0A\u4E0B\u6587" });
-      const bar = wrap.createDiv({ cls: "ai-quota-bar" });
-      bar.createDiv({ cls: "ai-quota-bar-fill" }).style.width = pct + "%";
-      wrap.createSpan({
-        cls: "ai-quota-label",
-        text: `${pct}% \xB7 \u5269 ${fmtLimit(remain)}`
-      });
-    }
-    if ((m == null ? void 0 : m.outputTokenLimit) && u) {
-      const used = u.completionTokens;
-      const limit = m.outputTokenLimit;
-      const pct = Math.min(100, Math.round(used / limit * 100));
-      const remain = Math.max(0, limit - used);
-      const wrap = this.usageEl.createDiv({ cls: "ai-quota" });
-      wrap.createSpan({ cls: "ai-quota-label", text: "\u8F93\u51FA" });
-      const bar = wrap.createDiv({ cls: "ai-quota-bar" });
-      bar.createDiv({ cls: "ai-quota-bar-fill" }).style.width = pct + "%";
-      wrap.createSpan({
-        cls: "ai-quota-label",
-        text: `${pct}% \xB7 \u5269 ${fmtLimit(remain)}`
-      });
-    }
     const row2 = this.usageEl.createDiv({ cls: "ai-chat-usage-line" });
     const s = this.sessionUsage;
     const tail = u ? `\u672C\u6B21 ${u.promptTokens}+${u.completionTokens}=${u.totalTokens}` : "\u2014";
@@ -795,7 +757,6 @@ var _SelectionPopover = class _SelectionPopover {
     __publicField(this, "usageEl");
     __publicField(this, "lastResult", "");
     __publicField(this, "busy", false);
-    __publicField(this, "sessionUsage", { prompt: 0, completion: 0, total: 0 });
     this.plugin = plugin;
     this.editor = editor;
     this.selected = selected;
@@ -1126,11 +1087,6 @@ ${this.selected}
           onDone: (u) => {
             this.messages.push({ role: "model", content: acc });
             this.lastResult = acc;
-            if (u) {
-              this.sessionUsage.prompt += u.promptTokens;
-              this.sessionUsage.completion += u.completionTokens;
-              this.sessionUsage.total += u.totalTokens;
-            }
             this.renderActions();
             this.renderUsage(u);
           },
@@ -1171,28 +1127,6 @@ ${this.selected}
     const limits = modelLimitsText(model);
     const line1 = this.usageEl.createDiv({ cls: "ai-popover-usage-line" });
     line1.setText(`${model.name}${limits ? " \xB7 " + limits : ""}`);
-    if (model.inputTokenLimit) {
-      const used = this.sessionUsage.prompt;
-      const limit = model.inputTokenLimit;
-      const pct = Math.min(100, Math.round(used / limit * 100));
-      const remain = Math.max(0, limit - used);
-      const wrap = this.usageEl.createDiv({ cls: "ai-popover-quota" });
-      wrap.createSpan({ text: "\u4E0A\u4E0B\u6587" });
-      const bar = wrap.createDiv({ cls: "ai-popover-quota-bar" });
-      bar.createDiv({ cls: "ai-popover-quota-bar-fill" }).style.width = pct + "%";
-      wrap.createSpan({ text: `${pct}% \xB7 \u5269 ${fmtLimit(remain)}` });
-    }
-    if (model.outputTokenLimit && u) {
-      const used = u.completionTokens;
-      const limit = model.outputTokenLimit;
-      const pct = Math.min(100, Math.round(used / limit * 100));
-      const remain = Math.max(0, limit - used);
-      const wrap = this.usageEl.createDiv({ cls: "ai-popover-quota" });
-      wrap.createSpan({ text: "\u8F93\u51FA" });
-      const bar = wrap.createDiv({ cls: "ai-popover-quota-bar" });
-      bar.createDiv({ cls: "ai-popover-quota-bar-fill" }).style.width = pct + "%";
-      wrap.createSpan({ text: `${pct}% \xB7 \u5269 ${fmtLimit(remain)}` });
-    }
     if (u) {
       const line2 = this.usageEl.createDiv({ cls: "ai-popover-usage-line" });
       line2.setText(
