@@ -1,0 +1,26 @@
+{
+  "name": "obsidian-ai-companion",
+  "version": "0.1.0",
+  "description": "Obsidian AI 插件：右侧对话 + 划词悬浮沟通，Gemini 对接，可扩展。",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "version": "node version-bump.mjs"
+  },
+  "keywords": [
+    "obsidian",
+    "obsidian-plugin",
+    "ai",
+    "gemini"
+  ],
+  "author": "Garry",
+  "license": "MIT",
+  "devDependencies": {
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.21.5",
+    "obsidian": "^1.7.2",
+    "tslib": "^2.6.3",
+    "typescript": "^5.4.5"
+  }
+}
