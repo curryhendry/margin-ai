@@ -28,7 +28,7 @@ __export(main_exports, {
   default: () => AIPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian5 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/settings.ts
 var import_obsidian = require("obsidian");
@@ -365,7 +365,7 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
 };
 
 // src/views/chatView.ts
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 
 // src/llm/index.ts
 var providers = {
@@ -405,9 +405,135 @@ async function copyText(text) {
   }
 }
 
+// src/linkSuggest.ts
+var import_obsidian3 = require("obsidian");
+var NoteLinkSuggest = class {
+  constructor(app, input, onPick) {
+    __publicField(this, "app");
+    __publicField(this, "input");
+    __publicField(this, "onPick");
+    __publicField(this, "el", null);
+    __publicField(this, "items", []);
+    __publicField(this, "selected", 0);
+    __publicField(this, "match", null);
+    this.app = app;
+    this.input = input;
+    this.onPick = onPick;
+    this.input.addEventListener("input", () => this.refresh());
+    this.input.addEventListener("keydown", (e) => this.onKeydown(e));
+    this.input.addEventListener("scroll", () => this.close());
+    document.addEventListener("mousedown", (e) => {
+      if (this.el && !this.el.contains(e.target)) this.close();
+    });
+  }
+  /** 找到光标前未闭合的 [[ 前缀 */
+  findMatch() {
+    var _a;
+    const pos = (_a = this.input.selectionStart) != null ? _a : this.input.value.length;
+    const text = this.input.value.slice(0, pos);
+    const start = text.lastIndexOf("[[");
+    if (start < 0) return null;
+    const after = text.slice(start + 2);
+    if (after.includes("]]")) return null;
+    if (after.includes("\n")) return null;
+    return { start, end: pos, query: after };
+  }
+  refresh() {
+    const m = this.findMatch();
+    if (!m) {
+      this.close();
+      return;
+    }
+    const q = m.query.toLowerCase();
+    const files = this.app.vault.getMarkdownFiles().filter((f) => !q || f.basename.toLowerCase().includes(q)).sort((a, b) => {
+      const aStarts = a.basename.toLowerCase().startsWith(q) ? 0 : 1;
+      const bStarts = b.basename.toLowerCase().startsWith(q) ? 0 : 1;
+      return aStarts - bStarts || a.basename.localeCompare(b.basename);
+    }).slice(0, 8);
+    if (files.length === 0) {
+      this.close();
+      return;
+    }
+    this.match = { start: m.start, end: m.end };
+    this.items = files;
+    this.selected = 0;
+    this.render();
+  }
+  render() {
+    var _a, _b;
+    if (!this.el) {
+      this.el = document.createElement("div");
+      this.el.className = "ai-link-suggest";
+      document.body.appendChild(this.el);
+    }
+    this.el.empty();
+    for (let i = 0; i < this.items.length; i++) {
+      const f = this.items[i];
+      const item = this.el.createDiv({
+        cls: "ai-link-suggest-item" + (i === this.selected ? " is-selected" : ""),
+        attr: { "data-path": f.path }
+      });
+      const icon = item.createSpan({ cls: "ai-link-suggest-item-icon" });
+      (0, import_obsidian3.setIcon)(icon, "file-text");
+      item.createSpan({ cls: "ai-link-suggest-item-name", text: f.basename });
+      const parent = (_b = (_a = f.parent) == null ? void 0 : _a.path) != null ? _b : "";
+      item.createSpan({ cls: "ai-link-suggest-item-path", text: parent });
+      item.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        this.selected = i;
+        this.pick();
+      });
+    }
+    const rect = this.input.getBoundingClientRect();
+    this.el.style.position = "fixed";
+    this.el.style.left = rect.left + "px";
+    this.el.style.width = Math.min(340, rect.width) + "px";
+    const spaceAbove = rect.top - 8;
+    const h = this.el.offsetHeight;
+    this.el.style.top = spaceAbove > h + 8 ? rect.top - h - 4 + "px" : rect.bottom + 4 + "px";
+  }
+  onKeydown(e) {
+    if (!this.el) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      this.selected = (this.selected + 1) % this.items.length;
+      this.highlight();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      this.selected = (this.selected - 1 + this.items.length) % this.items.length;
+      this.highlight();
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      e.preventDefault();
+      this.pick();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      this.close();
+    }
+  }
+  highlight() {
+    if (!this.el) return;
+    for (let i = 0; i < this.el.children.length; i++) {
+      this.el.children[i].toggleClass("is-selected", i === this.selected);
+    }
+  }
+  pick() {
+    const file = this.items[this.selected];
+    const m = this.match;
+    this.close();
+    if (file && m) this.onPick(file, m);
+  }
+  close() {
+    var _a;
+    (_a = this.el) == null ? void 0 : _a.remove();
+    this.el = null;
+    this.match = null;
+    this.items = [];
+  }
+};
+
 // src/views/chatView.ts
 var VIEW_TYPE_CHAT = "margin-chat";
-var ChatView = class extends import_obsidian3.ItemView {
+var ChatView = class extends import_obsidian4.ItemView {
   constructor(leaf, plugin) {
     super(leaf);
     __publicField(this, "plugin");
@@ -422,6 +548,7 @@ var ChatView = class extends import_obsidian3.ItemView {
     __publicField(this, "usageEl");
     __publicField(this, "attachEl");
     __publicField(this, "attachedNotes", []);
+    __publicField(this, "linkSuggest");
     __publicField(this, "busy", false);
     __publicField(this, "sessionUsage", { prompt: 0, completion: 0, total: 0 });
     this.plugin = plugin;
@@ -525,7 +652,7 @@ var ChatView = class extends import_obsidian3.ItemView {
       cls: "ai-chat-clear",
       attr: { type: "button", title: "\u65B0\u5BF9\u8BDD" }
     });
-    (0, import_obsidian3.setIcon)(newBtn, "plus");
+    (0, import_obsidian4.setIcon)(newBtn, "plus");
     newBtn.addEventListener("click", () => {
       this.histories.delete(this.noteKey);
       this.usageByNote.delete(this.noteKey);
@@ -557,6 +684,11 @@ var ChatView = class extends import_obsidian3.ItemView {
         this.send();
       }
     });
+    this.linkSuggest = new NoteLinkSuggest(
+      this.app,
+      this.inputEl,
+      (file, m) => this.insertNoteRef(file, m)
+    );
     this.renderMessages();
   }
   renderMessages() {
@@ -574,7 +706,7 @@ var ChatView = class extends import_obsidian3.ItemView {
         cls: "ai-msg-copy",
         attr: { type: "button", title: "\u590D\u5236\u672C\u6761\u6D88\u606F" }
       });
-      (0, import_obsidian3.setIcon)(copyBtn, "copy");
+      (0, import_obsidian4.setIcon)(copyBtn, "copy");
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         copyText(m.content);
@@ -602,7 +734,7 @@ var ChatView = class extends import_obsidian3.ItemView {
     if (!text || this.busy) return;
     const model = this.currentModel();
     if (!model) {
-      new import_obsidian3.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0\u6A21\u578B");
+      new import_obsidian4.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0\u6A21\u578B");
       return;
     }
     this.attachRefsFromText(text);
@@ -611,7 +743,7 @@ var ChatView = class extends import_obsidian3.ItemView {
     this.renderMessages();
     await this.runAssistantTurn(model);
   }
-  /** 从消息文本解析 [[笔记名]]，resolve 成功后加入关联列表 */
+  /** 从消息文本解析 [[笔记名]]：resolve 成功后加入关联列表，失败给出提示 */
   attachRefsFromText(text) {
     const re = /\[\[([^\]]+)\]\]/g;
     let m;
@@ -619,13 +751,42 @@ var ChatView = class extends import_obsidian3.ItemView {
     while ((m = re.exec(text)) !== null) {
       const name = m[1].trim();
       if (!name) continue;
-      const f = this.app.metadataCache.getFirstLinkpathDest(name, "") || this.app.vault.getAbstractFileByPath(name);
-      if (!(f instanceof import_obsidian3.TFile)) continue;
-      if (this.attachedNotes.some((x) => x.path === f.path)) continue;
-      this.attachedNotes.push({ path: f.path, basename: f.basename });
-      added = true;
+      const f = this.resolveNote(name);
+      if (!f) {
+        new import_obsidian4.Notice(`\u672A\u627E\u5230\u7B14\u8BB0\uFF1A${name}`);
+        continue;
+      }
+      if (!this.attachedNotes.some((x) => x.path === f.path)) {
+        this.attachedNotes.push({ path: f.path, basename: f.basename });
+        added = true;
+      }
     }
     if (added) this.renderAttachedChips();
+  }
+  /** [[X]] 补全选中：把 [[X]] 插入输入框并立即显示关联标签 */
+  insertNoteRef(file, match) {
+    const cur = this.inputEl.value;
+    const insert = `[[${file.basename}]]`;
+    this.inputEl.value = cur.slice(0, match.start) + insert + cur.slice(match.end);
+    const pos = match.start + insert.length;
+    this.inputEl.setSelectionRange(pos, pos);
+    this.inputEl.focus();
+    this.attachNote(file);
+  }
+  /** 把笔记加入关联列表并渲染标签（去重） */
+  attachNote(file) {
+    if (!this.attachedNotes.some((x) => x.path === file.path)) {
+      this.attachedNotes.push({ path: file.path, basename: file.basename });
+      this.renderAttachedChips();
+    }
+  }
+  /** 解析 [[名称]]：wikilink/路径优先，其次按 basename 精确/模糊匹配（兜底） */
+  resolveNote(name) {
+    const direct = this.app.metadataCache.getFirstLinkpathDest(name, "") || this.app.vault.getAbstractFileByPath(name);
+    if (direct instanceof import_obsidian4.TFile) return direct;
+    const lower = name.toLowerCase();
+    const files = this.app.vault.getMarkdownFiles();
+    return files.find((f) => f.basename.toLowerCase() === lower) || files.find((f) => f.basename.toLowerCase().includes(lower)) || null;
   }
   /**
    * 流式生成 AI 回复。send 与「重新获取」共用。
@@ -650,7 +811,7 @@ var ChatView = class extends import_obsidian3.ItemView {
       cls: "ai-msg-copy",
       attr: { type: "button", title: "\u590D\u5236\u672C\u6761\u6D88\u606F" }
     });
-    (0, import_obsidian3.setIcon)(copyBtn, "copy");
+    (0, import_obsidian4.setIcon)(copyBtn, "copy");
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       copyText(acc);
@@ -663,7 +824,7 @@ var ChatView = class extends import_obsidian3.ItemView {
         const blocks = [];
         for (const n of this.attachedNotes) {
           const f = this.app.vault.getAbstractFileByPath(n.path);
-          if (!(f instanceof import_obsidian3.TFile)) continue;
+          if (!(f instanceof import_obsidian4.TFile)) continue;
           try {
             const content = await this.app.vault.cachedRead(f);
             blocks.push(`[[${n.basename}]]
@@ -703,13 +864,13 @@ ${blocks.join("\n\n---\n\n")}`;
           onError: (e) => {
             console.error("[Margin:chat] chat error", e);
             roleEl.setText("AI");
-            new import_obsidian3.Notice("\u9519\u8BEF\uFF1A" + e.message);
+            new import_obsidian4.Notice("\u9519\u8BEF\uFF1A" + e.message);
             contentEl.setText("\u26A0\uFE0F " + e.message);
             const retryBtn = aiBubble.createEl("button", {
               cls: "ai-msg-retry",
               attr: { type: "button", title: "\u91CD\u65B0\u83B7\u53D6\u8FD9\u4E00\u8F6E\u56DE\u7B54" }
             });
-            (0, import_obsidian3.setIcon)(retryBtn, "rotate-ccw");
+            (0, import_obsidian4.setIcon)(retryBtn, "rotate-ccw");
             retryBtn.addEventListener("click", async (ev) => {
               ev.stopPropagation();
               aiBubble.remove();
@@ -743,7 +904,7 @@ ${blocks.join("\n\n---\n\n")}`;
 };
 
 // src/selection/popover.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 var Z_TOP = 2147483e3;
 var SelectionPopover = class {
   constructor(plugin, editor, selected) {
@@ -762,6 +923,7 @@ var SelectionPopover = class {
     __publicField(this, "lastResult", "");
     __publicField(this, "attachEl");
     __publicField(this, "attachedNotes", []);
+    __publicField(this, "linkSuggest");
     __publicField(this, "busy", false);
     this.plugin = plugin;
     this.editor = editor;
@@ -780,15 +942,6 @@ var SelectionPopover = class {
     const title = header.createSpan({ cls: "ai-popover-title", text: "Margin" });
     title.addClass("ai-popover-drag");
     const right = header.createDiv({ cls: "ai-popover-header-right" });
-    const resetBtn = right.createEl("button", {
-      cls: "ai-popover-reset",
-      text: "\u21BA",
-      attr: { type: "button", title: "\u91CD\u6765\uFF08\u6E05\u7A7A\u672C\u7B14\u8BB0\u5BF9\u8BDD\uFF09" }
-    });
-    resetBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      this.reset();
-    });
     const close = right.createEl("button", {
       cls: "ai-popover-close",
       text: "\u2715",
@@ -827,6 +980,11 @@ var SelectionPopover = class {
         this.send();
       }
     });
+    this.linkSuggest = new NoteLinkSuggest(
+      this.plugin.app,
+      this.inputEl,
+      (file, m) => this.insertNoteRef(file, m)
+    );
     document.body.appendChild(root);
     this.root = root;
     this.renderMessages();
@@ -865,7 +1023,7 @@ var SelectionPopover = class {
     let origY = 0;
     const isBtn = (t) => {
       var _a;
-      return !!((_a = t == null ? void 0 : t.closest) == null ? void 0 : _a.call(t, ".ai-popover-close, .ai-popover-reset"));
+      return !!((_a = t == null ? void 0 : t.closest) == null ? void 0 : _a.call(t, ".ai-popover-close"));
     };
     const begin = (cx, cy) => {
       var _a, _b, _c, _d;
@@ -917,18 +1075,6 @@ var SelectionPopover = class {
     (_a = this.root) == null ? void 0 : _a.remove();
     this.root = void 0;
   }
-  /** 重来：清空本次对话与关联标签 */
-  reset() {
-    var _a;
-    this.messages = [];
-    this.lastResult = "";
-    this.attachedNotes = [];
-    this.renderAttachedChips();
-    this.renderMessages();
-    this.renderActions();
-    this.renderUsage(null);
-    (_a = this.inputEl) == null ? void 0 : _a.focus();
-  }
   renderActions() {
     if (!this.actionsEl) return;
     this.actionsEl.empty();
@@ -941,16 +1087,16 @@ var SelectionPopover = class {
         cls: "ai-popover-btn",
         attr: { type: "button", title: label }
       });
-      (0, import_obsidian4.setIcon)(b, iconId);
+      (0, import_obsidian5.setIcon)(b, iconId);
       b.addEventListener("click", fn);
     };
     mk("\u63D2\u5165\u5149\u6807", "corner-down-left", () => {
       this.editor.replaceRange(this.lastResult, this.editor.getCursor());
-      new import_obsidian4.Notice("\u5DF2\u63D2\u5165\u5230\u5149\u6807\u5904");
+      new import_obsidian5.Notice("\u5DF2\u63D2\u5165\u5230\u5149\u6807\u5904");
     });
     mk("\u8986\u76D6\u9009\u533A", "refresh-cw", () => {
       this.editor.replaceRange(this.lastResult, this.from, this.to);
-      new import_obsidian4.Notice("\u5DF2\u8986\u76D6\u9009\u533A");
+      new import_obsidian5.Notice("\u5DF2\u8986\u76D6\u9009\u533A");
     });
   }
   renderMessages() {
@@ -970,7 +1116,7 @@ var SelectionPopover = class {
         cls: "ai-popover-msg-copy",
         attr: { type: "button", title: "\u590D\u5236\u672C\u6761\u6D88\u606F" }
       });
-      (0, import_obsidian4.setIcon)(copyBtn, "copy");
+      (0, import_obsidian5.setIcon)(copyBtn, "copy");
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         copyText(text);
@@ -1036,7 +1182,7 @@ var SelectionPopover = class {
       });
     }
   }
-  /** 从消息文本解析 [[笔记名]]，resolve 成功后加入关联列表 */
+  /** 从消息文本解析 [[笔记名]]：resolve 成功后加入关联列表，失败给出提示 */
   attachRefsFromText(text) {
     const re = /\[\[([^\]]+)\]\]/g;
     let m;
@@ -1044,13 +1190,43 @@ var SelectionPopover = class {
     while ((m = re.exec(text)) !== null) {
       const name = m[1].trim();
       if (!name) continue;
-      const f = this.plugin.app.metadataCache.getFirstLinkpathDest(name, "") || this.plugin.app.vault.getAbstractFileByPath(name);
-      if (!(f instanceof import_obsidian4.TFile)) continue;
-      if (this.attachedNotes.some((x) => x.path === f.path)) continue;
-      this.attachedNotes.push({ path: f.path, basename: f.basename });
-      added = true;
+      const f = this.resolveNote(name);
+      if (!f) {
+        new import_obsidian5.Notice(`\u672A\u627E\u5230\u7B14\u8BB0\uFF1A${name}`);
+        continue;
+      }
+      if (!this.attachedNotes.some((x) => x.path === f.path)) {
+        this.attachedNotes.push({ path: f.path, basename: f.basename });
+        added = true;
+      }
     }
     if (added) this.renderAttachedChips();
+  }
+  /** [[X]] 补全选中：把 [[X]] 插入输入框并立即显示关联标签 */
+  insertNoteRef(file, match) {
+    if (!this.inputEl) return;
+    const cur = this.inputEl.value;
+    const insert = `[[${file.basename}]]`;
+    this.inputEl.value = cur.slice(0, match.start) + insert + cur.slice(match.end);
+    const pos = match.start + insert.length;
+    this.inputEl.setSelectionRange(pos, pos);
+    this.inputEl.focus();
+    this.attachNote(file);
+  }
+  /** 把笔记加入关联列表并渲染标签（去重） */
+  attachNote(file) {
+    if (!this.attachedNotes.some((x) => x.path === file.path)) {
+      this.attachedNotes.push({ path: file.path, basename: file.basename });
+      this.renderAttachedChips();
+    }
+  }
+  /** 解析 [[名称]]：wikilink/路径优先，其次按 basename 精确/模糊匹配（兜底） */
+  resolveNote(name) {
+    const direct = this.plugin.app.metadataCache.getFirstLinkpathDest(name, "") || this.plugin.app.vault.getAbstractFileByPath(name);
+    if (direct instanceof import_obsidian5.TFile) return direct;
+    const lower = name.toLowerCase();
+    const files = this.plugin.app.vault.getMarkdownFiles();
+    return files.find((f) => f.basename.toLowerCase() === lower) || files.find((f) => f.basename.toLowerCase().includes(lower)) || null;
   }
   async send() {
     var _a;
@@ -1058,7 +1234,7 @@ var SelectionPopover = class {
     if (!text || this.busy) return;
     const model = this.currentModel();
     if (!model) {
-      new import_obsidian4.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0\u6A21\u578B");
+      new import_obsidian5.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0\u6A21\u578B");
       return;
     }
     this.attachRefsFromText(text);
@@ -1107,7 +1283,7 @@ ${this.selected}
       cls: "ai-popover-msg-copy",
       attr: { type: "button", title: "\u590D\u5236\u672C\u6761\u6D88\u606F" }
     });
-    (0, import_obsidian4.setIcon)(copyBtn, "copy");
+    (0, import_obsidian5.setIcon)(copyBtn, "copy");
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       copyText(acc);
@@ -1119,7 +1295,7 @@ ${this.selected}
         const blocks = [];
         for (const n of this.attachedNotes) {
           const f = this.plugin.app.vault.getAbstractFileByPath(n.path);
-          if (!(f instanceof import_obsidian4.TFile)) continue;
+          if (!(f instanceof import_obsidian5.TFile)) continue;
           try {
             const content = await this.plugin.app.vault.cachedRead(f);
             blocks.push(`[[${n.basename}]]
@@ -1157,13 +1333,13 @@ ${blocks.join("\n\n---\n\n")}`;
           onError: (e) => {
             console.error("[Margin:popover] chat error", e);
             roleEl.setText("AI");
-            new import_obsidian4.Notice("\u9519\u8BEF\uFF1A" + e.message);
+            new import_obsidian5.Notice("\u9519\u8BEF\uFF1A" + e.message);
             contentEl.setText("\u26A0\uFE0F " + e.message);
             const retryBtn = aiBubble.createEl("button", {
               cls: "ai-popover-msg-retry",
               attr: { type: "button", title: "\u91CD\u65B0\u83B7\u53D6\u8FD9\u4E00\u8F6E\u56DE\u7B54" }
             });
-            (0, import_obsidian4.setIcon)(retryBtn, "rotate-ccw");
+            (0, import_obsidian5.setIcon)(retryBtn, "rotate-ccw");
             retryBtn.addEventListener("click", async (ev) => {
               ev.stopPropagation();
               aiBubble.remove();
@@ -1202,7 +1378,7 @@ ${blocks.join("\n\n---\n\n")}`;
 };
 
 // src/main.ts
-var AIPlugin = class extends import_obsidian5.Plugin {
+var AIPlugin = class extends import_obsidian6.Plugin {
   async onload() {
     await this.loadSettings();
     this.registerView(VIEW_TYPE_CHAT, (leaf) => new ChatView(leaf, this));
@@ -1238,17 +1414,17 @@ var AIPlugin = class extends import_obsidian5.Plugin {
       id: "open-margin-popover",
       name: "\u6253\u5F00 Margin \u60AC\u6D6E\u5BF9\u8BDD",
       callback: () => {
-        let view = this.app.workspace.getActiveViewOfType(import_obsidian5.MarkdownView);
+        let view = this.app.workspace.getActiveViewOfType(import_obsidian6.MarkdownView);
         if (!view) {
           for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
-            if (leaf.view instanceof import_obsidian5.MarkdownView) {
+            if (leaf.view instanceof import_obsidian6.MarkdownView) {
               view = leaf.view;
               break;
             }
           }
         }
         if (!view) {
-          new import_obsidian5.Notice("\u5F53\u524D\u6CA1\u6709\u6253\u5F00\u7684\u7B14\u8BB0");
+          new import_obsidian6.Notice("\u5F53\u524D\u6CA1\u6709\u6253\u5F00\u7684\u7B14\u8BB0");
           return;
         }
         new SelectionPopover(this, view.editor, view.editor.getSelection()).open();

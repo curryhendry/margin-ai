@@ -4,6 +4,7 @@ import { ChatMessage, UsageInfo } from "../llm/types";
 import { getProvider } from "../llm";
 import { modelLimitsText, type AIModel } from "../settings";
 import { copyText } from "../util";
+import { NoteLinkSuggest } from "../linkSuggest";
 
 /** 置顶层级 */
 const Z_TOP = 2147483000;
@@ -33,6 +34,7 @@ export class SelectionPopover {
   private lastResult = "";
   private attachEl?: HTMLElement;
   private attachedNotes: { path: string; basename: string }[] = [];
+  private linkSuggest?: NoteLinkSuggest;
   private busy = false;
 
   constructor(plugin: AIPlugin, editor: Editor, selected: string) {
@@ -56,15 +58,6 @@ export class SelectionPopover {
     const title = header.createSpan({ cls: "ai-popover-title", text: "Margin" });
     title.addClass("ai-popover-drag");
     const right = header.createDiv({ cls: "ai-popover-header-right" });
-    const resetBtn = right.createEl("button", {
-      cls: "ai-popover-reset",
-      text: "↺",
-      attr: { type: "button", title: "重来（清空本笔记对话）" },
-    });
-    resetBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      this.reset();
-    });
     const close = right.createEl("button", {
       cls: "ai-popover-close",
       text: "✕",
@@ -116,6 +109,13 @@ export class SelectionPopover {
       }
     });
 
+    // [[ 笔记补全：选中即插入 [[笔记]] 并立即显示为关联标签
+    this.linkSuggest = new NoteLinkSuggest(
+      this.plugin.app,
+      this.inputEl,
+      (file, m) => this.insertNoteRef(file, m)
+    );
+
     document.body.appendChild(root);
     this.root = root;
 
@@ -159,7 +159,7 @@ export class SelectionPopover {
     let origY = 0;
 
     const isBtn = (t: EventTarget | null): boolean =>
-      !!(t as HTMLElement)?.closest?.(".ai-popover-close, .ai-popover-reset");
+      !!(t as HTMLElement)?.closest?.(".ai-popover-close");
 
     const begin = (cx: number, cy: number): void => {
       dragging = true;
@@ -213,18 +213,6 @@ export class SelectionPopover {
   close(): void {
     this.root?.remove();
     this.root = undefined;
-  }
-
-  /** 重来：清空本次对话与关联标签 */
-  private reset(): void {
-    this.messages = [];
-    this.lastResult = "";
-    this.attachedNotes = [];
-    this.renderAttachedChips();
-    this.renderMessages();
-    this.renderActions();
-    this.renderUsage(null);
-    this.inputEl?.focus();
   }
 
   private renderActions(): void {
@@ -348,7 +336,7 @@ export class SelectionPopover {
     }
   }
 
-  /** 从消息文本解析 [[笔记名]]，resolve 成功后加入关联列表 */
+  /** 从消息文本解析 [[笔记名]]：resolve 成功后加入关联列表，失败给出提示 */
   private attachRefsFromText(text: string): void {
     const re = /\[\[([^\]]+)\]\]/g;
     let m: RegExpExecArray | null;
@@ -356,15 +344,52 @@ export class SelectionPopover {
     while ((m = re.exec(text)) !== null) {
       const name = m[1].trim();
       if (!name) continue;
-      const f =
-        this.plugin.app.metadataCache.getFirstLinkpathDest(name, "") ||
-        this.plugin.app.vault.getAbstractFileByPath(name);
-      if (!(f instanceof TFile)) continue;
-      if (this.attachedNotes.some((x) => x.path === f.path)) continue;
-      this.attachedNotes.push({ path: f.path, basename: f.basename });
-      added = true;
+      const f = this.resolveNote(name);
+      if (!f) {
+        new Notice(`未找到笔记：${name}`);
+        continue;
+      }
+      if (!this.attachedNotes.some((x) => x.path === f.path)) {
+        this.attachedNotes.push({ path: f.path, basename: f.basename });
+        added = true;
+      }
     }
     if (added) this.renderAttachedChips();
+  }
+
+  /** [[X]] 补全选中：把 [[X]] 插入输入框并立即显示关联标签 */
+  private insertNoteRef(file: TFile, match: { start: number; end: number }): void {
+    if (!this.inputEl) return;
+    const cur = this.inputEl.value;
+    const insert = `[[${file.basename}]]`;
+    this.inputEl.value = cur.slice(0, match.start) + insert + cur.slice(match.end);
+    const pos = match.start + insert.length;
+    this.inputEl.setSelectionRange(pos, pos);
+    this.inputEl.focus();
+    this.attachNote(file);
+  }
+
+  /** 把笔记加入关联列表并渲染标签（去重） */
+  private attachNote(file: TFile): void {
+    if (!this.attachedNotes.some((x) => x.path === file.path)) {
+      this.attachedNotes.push({ path: file.path, basename: file.basename });
+      this.renderAttachedChips();
+    }
+  }
+
+  /** 解析 [[名称]]：wikilink/路径优先，其次按 basename 精确/模糊匹配（兜底） */
+  private resolveNote(name: string): TFile | null {
+    const direct =
+      this.plugin.app.metadataCache.getFirstLinkpathDest(name, "") ||
+      this.plugin.app.vault.getAbstractFileByPath(name);
+    if (direct instanceof TFile) return direct;
+    const lower = name.toLowerCase();
+    const files = this.plugin.app.vault.getMarkdownFiles();
+    return (
+      files.find((f) => f.basename.toLowerCase() === lower) ||
+      files.find((f) => f.basename.toLowerCase().includes(lower)) ||
+      null
+    );
   }
 
   private async send(): Promise<void> {

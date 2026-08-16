@@ -4,6 +4,7 @@ import { ChatMessage, UsageInfo } from "../llm/types";
 import { getProvider } from "../llm";
 import { modelLimitsText, type AIModel } from "../settings";
 import { copyText } from "../util";
+import { NoteLinkSuggest } from "../linkSuggest";
 
 export const VIEW_TYPE_CHAT = "margin-chat";
 
@@ -30,6 +31,7 @@ export class ChatView extends ItemView {
   private usageEl!: HTMLElement;
   private attachEl!: HTMLElement;
   private attachedNotes: { path: string; basename: string }[] = [];
+  private linkSuggest?: NoteLinkSuggest;
   private busy = false;
   private sessionUsage: SessionUsage = { prompt: 0, completion: 0, total: 0 };
 
@@ -187,6 +189,11 @@ export class ChatView extends ItemView {
       }
     });
 
+    // [[ 笔记补全：选中即插入 [[笔记]] 并立即显示为关联标签
+    this.linkSuggest = new NoteLinkSuggest(this.app, this.inputEl, (file, m) =>
+      this.insertNoteRef(file, m)
+    );
+
     this.renderMessages();
   }
 
@@ -250,7 +257,7 @@ export class ChatView extends ItemView {
     await this.runAssistantTurn(model);
   }
 
-  /** 从消息文本解析 [[笔记名]]，resolve 成功后加入关联列表 */
+  /** 从消息文本解析 [[笔记名]]：resolve 成功后加入关联列表，失败给出提示 */
   private attachRefsFromText(text: string): void {
     const re = /\[\[([^\]]+)\]\]/g;
     let m: RegExpExecArray | null;
@@ -258,15 +265,51 @@ export class ChatView extends ItemView {
     while ((m = re.exec(text)) !== null) {
       const name = m[1].trim();
       if (!name) continue;
-      const f =
-        this.app.metadataCache.getFirstLinkpathDest(name, "") ||
-        this.app.vault.getAbstractFileByPath(name);
-      if (!(f instanceof TFile)) continue;
-      if (this.attachedNotes.some((x) => x.path === f.path)) continue;
-      this.attachedNotes.push({ path: f.path, basename: f.basename });
-      added = true;
+      const f = this.resolveNote(name);
+      if (!f) {
+        new Notice(`未找到笔记：${name}`);
+        continue;
+      }
+      if (!this.attachedNotes.some((x) => x.path === f.path)) {
+        this.attachedNotes.push({ path: f.path, basename: f.basename });
+        added = true;
+      }
     }
     if (added) this.renderAttachedChips();
+  }
+
+  /** [[X]] 补全选中：把 [[X]] 插入输入框并立即显示关联标签 */
+  private insertNoteRef(file: TFile, match: { start: number; end: number }): void {
+    const cur = this.inputEl.value;
+    const insert = `[[${file.basename}]]`;
+    this.inputEl.value = cur.slice(0, match.start) + insert + cur.slice(match.end);
+    const pos = match.start + insert.length;
+    this.inputEl.setSelectionRange(pos, pos);
+    this.inputEl.focus();
+    this.attachNote(file);
+  }
+
+  /** 把笔记加入关联列表并渲染标签（去重） */
+  private attachNote(file: TFile): void {
+    if (!this.attachedNotes.some((x) => x.path === file.path)) {
+      this.attachedNotes.push({ path: file.path, basename: file.basename });
+      this.renderAttachedChips();
+    }
+  }
+
+  /** 解析 [[名称]]：wikilink/路径优先，其次按 basename 精确/模糊匹配（兜底） */
+  private resolveNote(name: string): TFile | null {
+    const direct =
+      this.app.metadataCache.getFirstLinkpathDest(name, "") ||
+      this.app.vault.getAbstractFileByPath(name);
+    if (direct instanceof TFile) return direct;
+    const lower = name.toLowerCase();
+    const files = this.app.vault.getMarkdownFiles();
+    return (
+      files.find((f) => f.basename.toLowerCase() === lower) ||
+      files.find((f) => f.basename.toLowerCase().includes(lower)) ||
+      null
+    );
   }
 
   /**
