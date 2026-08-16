@@ -1,6 +1,6 @@
 {
   "name": "obsidian-margin",
-  "version": "0.1.0",
+  "version": "0.1.000",
   "description": "Obsidian AI 插件：右侧对话 + 划词悬浮沟通，Gemini 对接，可扩展。",
   "main": "main.js",
   "scripts": {
