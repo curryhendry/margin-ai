@@ -227,19 +227,22 @@
   gap: 2px;
   align-items: center;
 }
-.ai-popover-reset,
-.ai-popover-close {
+.ai-popover-close,
+.ai-popover-new {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   background: none;
   border: none;
   color: var(--text-muted, #999);
   font-size: 12px;
   line-height: 1;
-  padding: 2px 5px;
+  padding: 2px;
   border-radius: 5px;
 }
-.ai-popover-reset:hover,
-.ai-popover-close:hover {
+.ai-popover-close:hover,
+.ai-popover-new:hover {
   background: var(--background-modifier-hover, rgba(127, 127, 127, 0.2));
   color: var(--text-normal, #ddd);
 }
@@ -604,9 +607,17 @@
 .ai-msg-retry svg,
 .ai-popover-msg-retry svg,
 .ai-chat-clear svg,
-.ai-popover-btn svg {
+.ai-popover-btn svg,
+.ai-popover-new svg {
   width: 14px;
   height: 14px;
+}
+
+/* ---------- 消息文本可选中（拖选复制） ---------- */
+.ai-msg-content,
+.ai-popover-msg-content {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 /* ---------- [[ 笔记补全下拉 ---------- */

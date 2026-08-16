@@ -18,6 +18,8 @@ const Z_TOP = 2147483000;
  * - 可拖动头部；点外部不关闭（防丢失）；始终置顶
  */
 export class SelectionPopover {
+  /** 同一时间只保留一个悬浮窗，避免多个叠加、卡在旧对话里 */
+  private static current?: SelectionPopover;
 
   private plugin: AIPlugin;
   private editor: Editor;
@@ -46,6 +48,10 @@ export class SelectionPopover {
   }
 
   open(): void {
+    // 新开时关掉旧的，避免多个悬浮窗叠加、卡在旧对话里
+    SelectionPopover.current?.close();
+    SelectionPopover.current = this;
+
     this.noteKey = this.plugin.app.workspace.getActiveFile()?.path ?? "";
 
     const root = document.createElement("div");
@@ -53,11 +59,20 @@ export class SelectionPopover {
     root.style.zIndex = String(Z_TOP);
     root.addEventListener("click", (e) => e.stopPropagation());
 
-    // 头部：标题 + 重来 + 关闭（可拖动）
+    // 头部：标题 + 新对话 + 关闭（可拖动）
     const header = root.createDiv({ cls: "ai-popover-header" });
     const title = header.createSpan({ cls: "ai-popover-title", text: "Margin" });
     title.addClass("ai-popover-drag");
     const right = header.createDiv({ cls: "ai-popover-header-right" });
+    const newBtn = right.createEl("button", {
+      cls: "ai-popover-new",
+      attr: { type: "button", title: "新对话" },
+    });
+    setIcon(newBtn, "plus");
+    newBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.newConversation();
+    });
     const close = right.createEl("button", {
       cls: "ai-popover-close",
       text: "✕",
@@ -159,7 +174,7 @@ export class SelectionPopover {
     let origY = 0;
 
     const isBtn = (t: EventTarget | null): boolean =>
-      !!(t as HTMLElement)?.closest?.(".ai-popover-close");
+      !!(t as HTMLElement)?.closest?.(".ai-popover-close, .ai-popover-new");
 
     const begin = (cx: number, cy: number): void => {
       dragging = true;
@@ -211,8 +226,21 @@ export class SelectionPopover {
 
   /** 关闭悬浮窗（每次打开都是新对话，不保存） */
   close(): void {
+    if (SelectionPopover.current === this) SelectionPopover.current = undefined;
     this.root?.remove();
     this.root = undefined;
+  }
+
+  /** 新对话：清空本次对话与关联标签 */
+  private newConversation(): void {
+    this.messages = [];
+    this.lastResult = "";
+    this.attachedNotes = [];
+    this.renderAttachedChips();
+    this.renderMessages();
+    this.renderActions();
+    this.renderUsage(null);
+    this.inputEl?.focus();
   }
 
   private renderActions(): void {

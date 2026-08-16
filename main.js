@@ -380,6 +380,15 @@ function getProvider(id) {
 // src/util.ts
 var import_obsidian2 = require("obsidian");
 async function copyText(text) {
+  try {
+    const electron = require("electron");
+    if (electron == null ? void 0 : electron.clipboard) {
+      electron.clipboard.writeText(text);
+      new import_obsidian2.Notice("\u5DF2\u590D\u5236");
+      return;
+    }
+  } catch (e) {
+  }
   if (navigator.clipboard && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(text);
@@ -397,9 +406,10 @@ async function copyText(text) {
     document.body.appendChild(ta);
     ta.focus();
     ta.select();
-    document.execCommand("copy");
+    const ok = document.execCommand("copy");
     ta.remove();
-    new import_obsidian2.Notice("\u5DF2\u590D\u5236");
+    if (ok) new import_obsidian2.Notice("\u5DF2\u590D\u5236");
+    else new import_obsidian2.Notice("\u590D\u5236\u5931\u8D25");
   } catch (e) {
     new import_obsidian2.Notice("\u590D\u5236\u5931\u8D25");
   }
@@ -906,7 +916,7 @@ ${blocks.join("\n\n---\n\n")}`;
 // src/selection/popover.ts
 var import_obsidian5 = require("obsidian");
 var Z_TOP = 2147483e3;
-var SelectionPopover = class {
+var _SelectionPopover = class _SelectionPopover {
   constructor(plugin, editor, selected) {
     __publicField(this, "plugin");
     __publicField(this, "editor");
@@ -932,8 +942,10 @@ var SelectionPopover = class {
     this.to = editor.getCursor("to");
   }
   open() {
-    var _a, _b;
-    this.noteKey = (_b = (_a = this.plugin.app.workspace.getActiveFile()) == null ? void 0 : _a.path) != null ? _b : "";
+    var _a, _b, _c;
+    (_a = _SelectionPopover.current) == null ? void 0 : _a.close();
+    _SelectionPopover.current = this;
+    this.noteKey = (_c = (_b = this.plugin.app.workspace.getActiveFile()) == null ? void 0 : _b.path) != null ? _c : "";
     const root = document.createElement("div");
     root.className = "ai-popover";
     root.style.zIndex = String(Z_TOP);
@@ -942,6 +954,15 @@ var SelectionPopover = class {
     const title = header.createSpan({ cls: "ai-popover-title", text: "Margin" });
     title.addClass("ai-popover-drag");
     const right = header.createDiv({ cls: "ai-popover-header-right" });
+    const newBtn = right.createEl("button", {
+      cls: "ai-popover-new",
+      attr: { type: "button", title: "\u65B0\u5BF9\u8BDD" }
+    });
+    (0, import_obsidian5.setIcon)(newBtn, "plus");
+    newBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.newConversation();
+    });
     const close = right.createEl("button", {
       cls: "ai-popover-close",
       text: "\u2715",
@@ -1023,7 +1044,7 @@ var SelectionPopover = class {
     let origY = 0;
     const isBtn = (t) => {
       var _a;
-      return !!((_a = t == null ? void 0 : t.closest) == null ? void 0 : _a.call(t, ".ai-popover-close"));
+      return !!((_a = t == null ? void 0 : t.closest) == null ? void 0 : _a.call(t, ".ai-popover-close, .ai-popover-new"));
     };
     const begin = (cx, cy) => {
       var _a, _b, _c, _d;
@@ -1072,8 +1093,21 @@ var SelectionPopover = class {
   /** 关闭悬浮窗（每次打开都是新对话，不保存） */
   close() {
     var _a;
+    if (_SelectionPopover.current === this) _SelectionPopover.current = void 0;
     (_a = this.root) == null ? void 0 : _a.remove();
     this.root = void 0;
+  }
+  /** 新对话：清空本次对话与关联标签 */
+  newConversation() {
+    var _a;
+    this.messages = [];
+    this.lastResult = "";
+    this.attachedNotes = [];
+    this.renderAttachedChips();
+    this.renderMessages();
+    this.renderActions();
+    this.renderUsage(null);
+    (_a = this.inputEl) == null ? void 0 : _a.focus();
   }
   renderActions() {
     if (!this.actionsEl) return;
@@ -1376,6 +1410,9 @@ ${blocks.join("\n\n---\n\n")}`;
     }
   }
 };
+/** 同一时间只保留一个悬浮窗，避免多个叠加、卡在旧对话里 */
+__publicField(_SelectionPopover, "current");
+var SelectionPopover = _SelectionPopover;
 
 // src/main.ts
 var AIPlugin = class extends import_obsidian6.Plugin {
