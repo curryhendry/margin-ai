@@ -2,7 +2,7 @@ import { Editor, Notice } from "obsidian";
 import type AIPlugin from "../main";
 import { ChatMessage, UsageInfo } from "../llm/types";
 import { getProvider } from "../llm";
-import { modelLimitsText, type AIModel } from "../settings";
+import { fmtLimit, modelLimitsText, type AIModel } from "../settings";
 import { copyText } from "../util";
 
 /** 置顶层级 */
@@ -38,6 +38,7 @@ export class SelectionPopover {
   private usageEl?: HTMLElement;
   private lastResult = "";
   private busy = false;
+  private sessionUsage = { prompt: 0, completion: 0, total: 0 };
 
   constructor(plugin: AIPlugin, editor: Editor, selected: string) {
     this.plugin = plugin;
@@ -412,6 +413,11 @@ export class SelectionPopover {
           onDone: (u: UsageInfo | null) => {
             this.messages.push({ role: "model", content: acc });
             this.lastResult = acc;
+            if (u) {
+              this.sessionUsage.prompt += u.promptTokens;
+              this.sessionUsage.completion += u.completionTokens;
+              this.sessionUsage.total += u.totalTokens;
+            }
             this.renderActions();
             this.renderUsage(u);
           },
@@ -454,6 +460,33 @@ export class SelectionPopover {
     const limits = modelLimitsText(model);
     const line1 = this.usageEl.createDiv({ cls: "ai-popover-usage-line" });
     line1.setText(`${model.name}${limits ? " · " + limits : ""}`);
+
+    // 上下文余量（紧凑进度条）
+    if (model.inputTokenLimit) {
+      const used = this.sessionUsage.prompt;
+      const limit = model.inputTokenLimit;
+      const pct = Math.min(100, Math.round((used / limit) * 100));
+      const remain = Math.max(0, limit - used);
+      const wrap = this.usageEl.createDiv({ cls: "ai-popover-quota" });
+      wrap.createSpan({ text: "上下文" });
+      const bar = wrap.createDiv({ cls: "ai-popover-quota-bar" });
+      bar.createDiv({ cls: "ai-popover-quota-bar-fill" }).style.width = pct + "%";
+      wrap.createSpan({ text: `${pct}% · 剩 ${fmtLimit(remain)}` });
+    }
+
+    // 输出余量（按本次请求的补全 tokens）
+    if (model.outputTokenLimit && u) {
+      const used = u.completionTokens;
+      const limit = model.outputTokenLimit;
+      const pct = Math.min(100, Math.round((used / limit) * 100));
+      const remain = Math.max(0, limit - used);
+      const wrap = this.usageEl.createDiv({ cls: "ai-popover-quota" });
+      wrap.createSpan({ text: "输出" });
+      const bar = wrap.createDiv({ cls: "ai-popover-quota-bar" });
+      bar.createDiv({ cls: "ai-popover-quota-bar-fill" }).style.width = pct + "%";
+      wrap.createSpan({ text: `${pct}% · 剩 ${fmtLimit(remain)}` });
+    }
+
     if (u) {
       const line2 = this.usageEl.createDiv({ cls: "ai-popover-usage-line" });
       line2.setText(

@@ -56,7 +56,17 @@ export default class AIPlugin extends Plugin {
       id: "open-margin-popover",
       name: "打开 Margin 悬浮对话",
       callback: () => {
-        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        // 优先活跃 markdown 视图；否则回退到最近的 markdown leaf
+        // （右侧 Chat 视图聚焦时 activeLeaf 不是 MarkdownView，需 fallback）
+        let view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!view) {
+          for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
+            if (leaf.view instanceof MarkdownView) {
+              view = leaf.view;
+              break;
+            }
+          }
+        }
         if (!view) {
           new Notice("当前没有打开的笔记");
           return;

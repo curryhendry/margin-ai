@@ -2,7 +2,7 @@ import { EventRef, ItemView, WorkspaceLeaf, Notice, TFile } from "obsidian";
 import type AIPlugin from "../main";
 import { ChatMessage, UsageInfo } from "../llm/types";
 import { getProvider } from "../llm";
-import { modelLimitsText, type AIModel } from "../settings";
+import { fmtLimit, modelLimitsText, type AIModel } from "../settings";
 import { copyText } from "../util";
 
 export const VIEW_TYPE_CHAT = "margin-chat";
@@ -28,6 +28,7 @@ export class ChatView extends ItemView {
   private inputEl!: HTMLTextAreaElement;
   private modelSelect!: HTMLSelectElement;
   private usageEl!: HTMLElement;
+  private noteChipEl?: HTMLAnchorElement;
   private busy = false;
   private sessionUsage: SessionUsage = { prompt: 0, completion: 0, total: 0 };
 
@@ -50,6 +51,7 @@ export class ChatView extends ItemView {
     this.render();
     this.noteKey = this.currentNote();
     this.loadNote();
+    this.updateNoteChip();
     this.fileOpenRef = this.app.workspace.on("file-open", () =>
       this.switchNote()
     );
@@ -77,10 +79,27 @@ export class ChatView extends ItemView {
     this.showUsage(null);
   }
 
+  /** 刷新头部 wikilink chip：显示当前关联笔记 basename，点击跳转 */
+  private updateNoteChip(): void {
+    if (!this.noteChipEl) return;
+    if (!this.noteKey || this.noteKey === "(无笔记)") {
+      this.noteChipEl.setText("未关联笔记");
+      this.noteChipEl.removeAttribute("title");
+      this.noteChipEl.addClass("is-empty");
+      return;
+    }
+    const f = this.app.vault.getAbstractFileByPath(this.noteKey);
+    const name = f instanceof TFile ? f.basename : this.noteKey;
+    this.noteChipEl.setText("[[" + name + "]]");
+    this.noteChipEl.setAttribute("title", this.noteKey);
+    this.noteChipEl.removeClass("is-empty");
+  }
+
   private switchNote(): void {
     this.saveNote();
     this.noteKey = this.currentNote();
     this.loadNote();
+    this.updateNoteChip();
   }
 
   /** 设置变更后刷新模型下拉 */
@@ -120,9 +139,15 @@ export class ChatView extends ItemView {
     this.populateModels();
     this.modelSelect.addEventListener("change", () => this.showUsage(null));
 
-    // 当前笔记标识
-    const note = header.createEl("span", { cls: "ai-chat-note" });
-    note.setText(this.noteKey ? "📄 " + this.noteKey : "");
+    // 当前关联笔记（wikilink 风格 chip，点击跳转）
+    this.noteChipEl = header.createEl("a", {
+      cls: "ai-chat-note-chip",
+    });
+    this.noteChipEl.addEventListener("click", () => {
+      if (!this.noteKey || this.noteKey === "(无笔记)") return;
+      this.app.workspace.openLinkText(this.noteKey, "");
+    });
+    this.updateNoteChip();
 
     const newBtn = header.createEl("button", {
       cls: "ai-chat-clear",
@@ -257,20 +282,53 @@ export class ChatView extends ItemView {
 
     const provider = getProvider(model.provider);
     try {
-      // 关联笔记：把当前笔记内容作为上下文
+      // 关联笔记 + [[引用]] 上下文
       const sys = this.plugin.settings.systemInstruction;
       let noteCtx = "";
+
+      // 1. 当前绑定的笔记（活跃笔记）
       if (this.noteKey && this.noteKey !== "(无笔记)") {
         const f = this.app.vault.getAbstractFileByPath(this.noteKey);
         if (f instanceof TFile) {
           try {
             const content = await this.app.vault.cachedRead(f);
-            noteCtx = `\n\n# 当前关联笔记\n路径：${this.noteKey}\n\n${content}`;
+            noteCtx += `\n\n# 当前关联笔记\n路径：${this.noteKey}\n\n${content}`;
           } catch (err) {
             console.warn("[Margin:chat] 读取关联笔记内容失败", err);
           }
         }
       }
+
+      // 2. 解析最后一条用户消息里的 [[笔记名]] 引用（Copilot 风格）
+      if (this.messages.length > 0) {
+        const last = this.messages[this.messages.length - 1];
+        if (last.role === "user") {
+          const re = /\[\[([^\]]+)\]\]/g;
+          let m: RegExpExecArray | null;
+          const seen = new Set<string>();
+          const blocks: string[] = [];
+          while ((m = re.exec(last.content)) !== null) {
+            const name = m[1].trim();
+            if (!name || seen.has(name)) continue;
+            seen.add(name);
+            const f =
+              this.app.metadataCache.getFirstLinkpathDest(name, "") ||
+              this.app.vault.getAbstractFileByPath(name);
+            if (f instanceof TFile) {
+              try {
+                const content = await this.app.vault.cachedRead(f);
+                blocks.push(`[[${name}]]\n\n${content}`);
+              } catch (err) {
+                console.warn("[Margin:chat] 读取引用笔记失败", name, err);
+              }
+            }
+          }
+          if (blocks.length > 0) {
+            noteCtx += `\n\n# 引用笔记\n${blocks.join("\n\n---\n\n")}`;
+          }
+        }
+      }
+
       const systemInstruction = (sys ? sys + "\n\n" : "") + noteCtx;
 
       await provider.chat(
@@ -316,13 +374,48 @@ export class ChatView extends ItemView {
     }
   }
 
-  /** 用量 / 模型限额。两行：上行模型+限额，下行会话+本次用量 */
+  /**
+   * 用量 / 配额。上行模型+限额；中间上下文/输出进度条（余量）；下行会话+本次
+   */
   private showUsage(u: UsageInfo | null): void {
     this.usageEl.empty();
     const m = this.currentModel();
     const limits = m ? modelLimitsText(m) : "";
     const row1 = this.usageEl.createDiv({ cls: "ai-chat-usage-line" });
     row1.setText(`${m?.name ?? "未选模型"}${limits ? " · " + limits : ""}`);
+
+    // 上下文余量
+    if (m?.inputTokenLimit) {
+      const used = this.sessionUsage.prompt;
+      const limit = m.inputTokenLimit;
+      const pct = Math.min(100, Math.round((used / limit) * 100));
+      const remain = Math.max(0, limit - used);
+      const wrap = this.usageEl.createDiv({ cls: "ai-quota" });
+      wrap.createSpan({ cls: "ai-quota-label", text: "上下文" });
+      const bar = wrap.createDiv({ cls: "ai-quota-bar" });
+      bar.createDiv({ cls: "ai-quota-bar-fill" }).style.width = pct + "%";
+      wrap.createSpan({
+        cls: "ai-quota-label",
+        text: `${pct}% · 剩 ${fmtLimit(remain)}`,
+      });
+    }
+
+    // 输出余量（按本次请求的补全 tokens 对比 outputTokenLimit）
+    if (m?.outputTokenLimit && u) {
+      const used = u.completionTokens;
+      const limit = m.outputTokenLimit;
+      const pct = Math.min(100, Math.round((used / limit) * 100));
+      const remain = Math.max(0, limit - used);
+      const wrap = this.usageEl.createDiv({ cls: "ai-quota" });
+      wrap.createSpan({ cls: "ai-quota-label", text: "输出" });
+      const bar = wrap.createDiv({ cls: "ai-quota-bar" });
+      bar.createDiv({ cls: "ai-quota-bar-fill" }).style.width = pct + "%";
+      wrap.createSpan({
+        cls: "ai-quota-label",
+        text: `${pct}% · 剩 ${fmtLimit(remain)}`,
+      });
+    }
+
     const row2 = this.usageEl.createDiv({ cls: "ai-chat-usage-line" });
     const s = this.sessionUsage;
     const tail = u
