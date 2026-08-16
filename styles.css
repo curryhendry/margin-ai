@@ -148,7 +148,7 @@
 /* ---------- 划词悬浮框 ---------- */
 .ai-popover {
   position: fixed;
-  width: 360px;
+  width: 480px;
   max-height: 420px;
   display: flex;
   flex-direction: column;
@@ -510,4 +510,25 @@
   opacity: 0.6;
   font-size: 12px;
   margin: 3px 0;
+}
+
+/* ---------- 失败重取按钮 ---------- */
+.ai-msg-retry,
+.ai-popover-msg-retry {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border, #555);
+  background: var(--background-secondary, rgba(127, 127, 127, 0.15));
+  cursor: pointer;
+  color: var(--text-normal, #ddd);
+  opacity: 0.9;
+  transition: opacity 0.12s, background 0.12s;
+}
+.ai-msg-retry:hover,
+.ai-popover-msg-retry:hover {
+  opacity: 1;
+  background: var(--background-modifier-hover, rgba(127, 127, 127, 0.25));
 }

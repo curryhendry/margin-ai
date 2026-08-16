@@ -1,8 +1,8 @@
-import { EventRef, ItemView, WorkspaceLeaf, Notice } from "obsidian";
+import { EventRef, ItemView, WorkspaceLeaf, Notice, TFile } from "obsidian";
 import type AIPlugin from "../main";
 import { ChatMessage, UsageInfo } from "../llm/types";
 import { getProvider } from "../llm";
-import { modelLimitsText } from "../settings";
+import { modelLimitsText, type AIModel } from "../settings";
 import { copyText } from "../util";
 
 export const VIEW_TYPE_CHAT = "margin-chat";
@@ -210,13 +210,33 @@ export class ChatView extends ItemView {
     if (!text || this.busy) return;
     const model = this.currentModel();
     if (!model) {
-      new Notice("请先在设置中添加 Gemini 模型");
+      new Notice("请先在设置中添加模型");
       return;
     }
     this.inputEl.value = "";
     this.messages.push({ role: "user", content: text });
     this.renderMessages();
+
+    await this.runAssistantTurn(model);
+  }
+
+  /**
+   * 流式生成 AI 回复。send 与「重新获取」共用。
+   * 把当前关联笔记的全文作为上下文（system instruction）发给 AI，
+   * 使 Chat 真正"关联"到笔记内容（不仅按笔记记忆）。
+   * 失败时在气泡上加「↻ 重新获取」按钮，点击重跑这一轮（不清空历史）。
+   * 对所有供应商生效。
+   */
+  private async runAssistantTurn(model: AIModel): Promise<void> {
     this.busy = true;
+    console.log(
+      "[Margin:chat] runAssistantTurn model=" +
+        model.name +
+        " noteKey=" +
+        this.noteKey +
+        " messages=" +
+        this.messages.length
+    );
 
     let acc = "";
     const aiBubble = this.messagesEl.createDiv({ cls: "ai-msg ai-msg-model" });
@@ -237,6 +257,22 @@ export class ChatView extends ItemView {
 
     const provider = getProvider(model.provider);
     try {
+      // 关联笔记：把当前笔记内容作为上下文
+      const sys = this.plugin.settings.systemInstruction;
+      let noteCtx = "";
+      if (this.noteKey && this.noteKey !== "(无笔记)") {
+        const f = this.app.vault.getAbstractFileByPath(this.noteKey);
+        if (f instanceof TFile) {
+          try {
+            const content = await this.app.vault.cachedRead(f);
+            noteCtx = `\n\n# 当前关联笔记\n路径：${this.noteKey}\n\n${content}`;
+          } catch (err) {
+            console.warn("[Margin:chat] 读取关联笔记内容失败", err);
+          }
+        }
+      }
+      const systemInstruction = (sys ? sys + "\n\n" : "") + noteCtx;
+
       await provider.chat(
         model,
         this.messages,
@@ -256,11 +292,24 @@ export class ChatView extends ItemView {
             this.showUsage(usage);
           },
           onError: (e) => {
+            console.error("[Margin:chat] chat error", e);
             new Notice("错误：" + e.message);
             contentEl.setText("⚠️ " + e.message);
+            const retryBtn = aiBubble.createEl("button", {
+              cls: "ai-msg-retry",
+              text: "↻ 重新获取",
+              attr: { type: "button", title: "重新获取这一轮回答" },
+            });
+            retryBtn.addEventListener("click", async (ev) => {
+              ev.stopPropagation();
+              aiBubble.remove();
+              const m = this.currentModel();
+              if (!m) return;
+              await this.runAssistantTurn(m);
+            });
           },
         },
-        { systemInstruction: this.plugin.settings.systemInstruction }
+        { systemInstruction }
       );
     } finally {
       this.busy = false;

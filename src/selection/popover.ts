@@ -2,7 +2,7 @@ import { Editor, Notice } from "obsidian";
 import type AIPlugin from "../main";
 import { ChatMessage, UsageInfo } from "../llm/types";
 import { getProvider } from "../llm";
-import { modelLimitsText } from "../settings";
+import { modelLimitsText, type AIModel } from "../settings";
 import { copyText } from "../util";
 
 /** 置顶层级 */
@@ -147,7 +147,7 @@ export class SelectionPopover {
 
   private position(rect: DOMRect | null): void {
     if (!this.root) return;
-    const w = Math.min(360, window.innerWidth - 16);
+    const w = Math.min(480, window.innerWidth - 16);
     const h = 420;
     let x = rect ? rect.left : window.innerWidth / 2 - w / 2;
     let y = rect ? rect.bottom + 8 : window.innerHeight / 2 - h / 2;
@@ -328,15 +328,20 @@ export class SelectionPopover {
     this.inputEl.focus();
   }
 
+  private currentModel() {
+    return (
+      this.plugin.settings.models.find(
+        (m) => m.id === this.plugin.settings.defaultModelId
+      ) || this.plugin.settings.models[0]
+    );
+  }
+
   private async send(): Promise<void> {
     const text = this.inputEl?.value.trim();
     if (!text || this.busy) return;
-    const model =
-      this.plugin.settings.models.find(
-        (m) => m.id === this.plugin.settings.defaultModelId
-      ) || this.plugin.settings.models[0];
+    const model = this.currentModel();
     if (!model) {
-      new Notice("请先在设置中添加 Gemini 模型");
+      new Notice("请先在设置中添加模型");
       return;
     }
 
@@ -355,9 +360,24 @@ export class SelectionPopover {
     }
 
     if (this.inputEl) this.inputEl.value = "";
-    this.busy = true;
-
     this.renderMessages();
+
+    await this.runAssistantTurn(model);
+  }
+
+  /**
+   * 流式生成 AI 回复。send 与「重新获取」共用。
+   * 失败时在气泡上加「↻ 重新获取」按钮，点击重跑这一轮（用户消息已在 messages 中，不重置历史）。
+   * 对所有供应商生效（UI 层重发，与 provider 无关）。
+   */
+  private async runAssistantTurn(model: AIModel): Promise<void> {
+    this.busy = true;
+    console.log(
+      "[Margin:popover] runAssistantTurn model=" +
+        model.name +
+        " messages=" +
+        this.messages.length
+    );
 
     let acc = "";
     const aiBubble = this.messagesEl!.createDiv({
@@ -396,8 +416,21 @@ export class SelectionPopover {
             this.renderUsage(u);
           },
           onError: (e) => {
+            console.error("[Margin:popover] chat error", e);
             new Notice("错误：" + e.message);
             contentEl.setText("⚠️ " + e.message);
+            const retryBtn = aiBubble.createEl("button", {
+              cls: "ai-popover-msg-retry",
+              text: "↻ 重新获取",
+              attr: { type: "button", title: "重新获取这一轮回答" },
+            });
+            retryBtn.addEventListener("click", async (ev) => {
+              ev.stopPropagation();
+              aiBubble.remove();
+              const m = this.currentModel();
+              if (!m) return;
+              await this.runAssistantTurn(m);
+            });
           },
         },
         { systemInstruction: this.plugin.settings.systemInstruction }

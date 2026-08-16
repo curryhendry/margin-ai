@@ -575,13 +575,26 @@ var ChatView = class extends import_obsidian3.ItemView {
     if (!text || this.busy) return;
     const model = this.currentModel();
     if (!model) {
-      new import_obsidian3.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0 Gemini \u6A21\u578B");
+      new import_obsidian3.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0\u6A21\u578B");
       return;
     }
     this.inputEl.value = "";
     this.messages.push({ role: "user", content: text });
     this.renderMessages();
+    await this.runAssistantTurn(model);
+  }
+  /**
+   * 流式生成 AI 回复。send 与「重新获取」共用。
+   * 把当前关联笔记的全文作为上下文（system instruction）发给 AI，
+   * 使 Chat 真正"关联"到笔记内容（不仅按笔记记忆）。
+   * 失败时在气泡上加「↻ 重新获取」按钮，点击重跑这一轮（不清空历史）。
+   * 对所有供应商生效。
+   */
+  async runAssistantTurn(model) {
     this.busy = true;
+    console.log(
+      "[Margin:chat] runAssistantTurn model=" + model.name + " noteKey=" + this.noteKey + " messages=" + this.messages.length
+    );
     let acc = "";
     const aiBubble = this.messagesEl.createDiv({ cls: "ai-msg ai-msg-model" });
     aiBubble.createEl("div", { cls: "ai-msg-role", text: "AI" });
@@ -600,6 +613,25 @@ var ChatView = class extends import_obsidian3.ItemView {
     });
     const provider = getProvider(model.provider);
     try {
+      const sys = this.plugin.settings.systemInstruction;
+      let noteCtx = "";
+      if (this.noteKey && this.noteKey !== "(\u65E0\u7B14\u8BB0)") {
+        const f = this.app.vault.getAbstractFileByPath(this.noteKey);
+        if (f instanceof import_obsidian3.TFile) {
+          try {
+            const content = await this.app.vault.cachedRead(f);
+            noteCtx = `
+
+# \u5F53\u524D\u5173\u8054\u7B14\u8BB0
+\u8DEF\u5F84\uFF1A${this.noteKey}
+
+${content}`;
+          } catch (err) {
+            console.warn("[Margin:chat] \u8BFB\u53D6\u5173\u8054\u7B14\u8BB0\u5185\u5BB9\u5931\u8D25", err);
+          }
+        }
+      }
+      const systemInstruction = (sys ? sys + "\n\n" : "") + noteCtx;
       await provider.chat(
         model,
         this.messages,
@@ -619,11 +651,24 @@ var ChatView = class extends import_obsidian3.ItemView {
             this.showUsage(usage);
           },
           onError: (e) => {
+            console.error("[Margin:chat] chat error", e);
             new import_obsidian3.Notice("\u9519\u8BEF\uFF1A" + e.message);
             contentEl.setText("\u26A0\uFE0F " + e.message);
+            const retryBtn = aiBubble.createEl("button", {
+              cls: "ai-msg-retry",
+              text: "\u21BB \u91CD\u65B0\u83B7\u53D6",
+              attr: { type: "button", title: "\u91CD\u65B0\u83B7\u53D6\u8FD9\u4E00\u8F6E\u56DE\u7B54" }
+            });
+            retryBtn.addEventListener("click", async (ev) => {
+              ev.stopPropagation();
+              aiBubble.remove();
+              const m = this.currentModel();
+              if (!m) return;
+              await this.runAssistantTurn(m);
+            });
           }
         },
-        { systemInstruction: this.plugin.settings.systemInstruction }
+        { systemInstruction }
       );
     } finally {
       this.busy = false;
@@ -752,7 +797,7 @@ var _SelectionPopover = class _SelectionPopover {
   }
   position(rect) {
     if (!this.root) return;
-    const w = Math.min(360, window.innerWidth - 16);
+    const w = Math.min(480, window.innerWidth - 16);
     const h = 420;
     let x = rect ? rect.left : window.innerWidth / 2 - w / 2;
     let y = rect ? rect.bottom + 8 : window.innerHeight / 2 - h / 2;
@@ -918,15 +963,18 @@ var _SelectionPopover = class _SelectionPopover {
     this.renderActions();
     this.inputEl.focus();
   }
+  currentModel() {
+    return this.plugin.settings.models.find(
+      (m) => m.id === this.plugin.settings.defaultModelId
+    ) || this.plugin.settings.models[0];
+  }
   async send() {
     var _a;
     const text = (_a = this.inputEl) == null ? void 0 : _a.value.trim();
     if (!text || this.busy) return;
-    const model = this.plugin.settings.models.find(
-      (m) => m.id === this.plugin.settings.defaultModelId
-    ) || this.plugin.settings.models[0];
+    const model = this.currentModel();
     if (!model) {
-      new import_obsidian4.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0 Gemini \u6A21\u578B");
+      new import_obsidian4.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0\u6A21\u578B");
       return;
     }
     if (this.messages.length === 0) {
@@ -947,8 +995,19 @@ ${this.selected}
       this.messages.push({ role: "user", content: text });
     }
     if (this.inputEl) this.inputEl.value = "";
-    this.busy = true;
     this.renderMessages();
+    await this.runAssistantTurn(model);
+  }
+  /**
+   * 流式生成 AI 回复。send 与「重新获取」共用。
+   * 失败时在气泡上加「↻ 重新获取」按钮，点击重跑这一轮（用户消息已在 messages 中，不重置历史）。
+   * 对所有供应商生效（UI 层重发，与 provider 无关）。
+   */
+  async runAssistantTurn(model) {
+    this.busy = true;
+    console.log(
+      "[Margin:popover] runAssistantTurn model=" + model.name + " messages=" + this.messages.length
+    );
     let acc = "";
     const aiBubble = this.messagesEl.createDiv({
       cls: "ai-popover-msg ai-popover-msg-model"
@@ -985,8 +1044,21 @@ ${this.selected}
             this.renderUsage(u);
           },
           onError: (e) => {
+            console.error("[Margin:popover] chat error", e);
             new import_obsidian4.Notice("\u9519\u8BEF\uFF1A" + e.message);
             contentEl.setText("\u26A0\uFE0F " + e.message);
+            const retryBtn = aiBubble.createEl("button", {
+              cls: "ai-popover-msg-retry",
+              text: "\u21BB \u91CD\u65B0\u83B7\u53D6",
+              attr: { type: "button", title: "\u91CD\u65B0\u83B7\u53D6\u8FD9\u4E00\u8F6E\u56DE\u7B54" }
+            });
+            retryBtn.addEventListener("click", async (ev) => {
+              ev.stopPropagation();
+              aiBubble.remove();
+              const m = this.currentModel();
+              if (!m) return;
+              await this.runAssistantTurn(m);
+            });
           }
         },
         { systemInstruction: this.plugin.settings.systemInstruction }
