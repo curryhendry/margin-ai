@@ -35,9 +35,28 @@ var import_obsidian = require("obsidian");
 var DEFAULT_SETTINGS = {
   models: [],
   defaultModelId: "",
-  insertMode: "cursor",
   systemInstruction: ""
 };
+function createKeyInput(container, value = "") {
+  const wrap = container.createDiv({ cls: "ai-set-key-wrap" });
+  const input = wrap.createEl("input", {
+    cls: "ai-set-input ai-set-key-input",
+    placeholder: "API Key",
+    type: "password",
+    value
+  });
+  const eye = wrap.createEl("button", {
+    cls: "ai-set-eye",
+    text: "\u{1F441}",
+    attr: { type: "button", title: "\u663E\u793A / \u9690\u85CF" }
+  });
+  eye.addEventListener("click", () => {
+    const show = input.type === "password";
+    input.type = show ? "text" : "password";
+    eye.setText(show ? "\u{1F648}" : "\u{1F441}");
+  });
+  return input;
+}
 var AISettingsTab = class extends import_obsidian.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
@@ -47,22 +66,26 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
+    containerEl.addClass("ai-set");
     containerEl.createEl("h2", { text: "Margin \u8BBE\u7F6E" });
-    containerEl.createEl("h3", { text: "\u6DFB\u52A0\u6A21\u578B" });
-    containerEl.createEl("p", {
+    this.renderAddModel(containerEl);
+    this.renderModelList(containerEl);
+    this.renderGeneral(containerEl);
+  }
+  /** 添加模型：名称 + Key（带眼睛）+ 添加按钮 */
+  renderAddModel(containerEl) {
+    const card = containerEl.createDiv({ cls: "ai-set-card" });
+    card.createEl("h3", { text: "\u6DFB\u52A0\u6A21\u578B" });
+    card.createEl("p", {
       cls: "ai-set-hint",
-      text: "\u6A21\u578B\u540D\u79F0\u586B\u5199\u4F60\u60F3\u8981\u7684\u578B\u53F7\uFF08\u5982 gemini-3.5-flash\uFF09\uFF0CAPI Key \u4ECE Google AI Studio \u83B7\u53D6\u3002\u53EF\u6DFB\u52A0\u591A\u4E2A\u5E76\u968F\u65F6\u5207\u6362\u3002"
+      text: "\u6A21\u578B\u540D\u79F0\u586B\u4F60\u60F3\u8981\u7684\u578B\u53F7\uFF08\u5982 gemini-3.5-flash\uFF09\uFF0CAPI Key \u4ECE Google AI Studio \u83B7\u53D6\u3002\u53EF\u6DFB\u52A0\u591A\u4E2A\u5E76\u968F\u65F6\u5207\u6362\u3002"
     });
-    const addWrap = containerEl.createDiv({ cls: "ai-set-add" });
+    const addWrap = card.createDiv({ cls: "ai-set-add" });
     const nameInput = addWrap.createEl("input", {
       cls: "ai-set-input",
       placeholder: "\u6A21\u578B\u540D\u79F0\uFF0C\u5982 gemini-3.5-flash"
     });
-    const keyInput = addWrap.createEl("input", {
-      cls: "ai-set-input",
-      placeholder: "API Key",
-      type: "password"
-    });
+    const keyInput = createKeyInput(addWrap);
     const addBtn = addWrap.createEl("button", {
       cls: "ai-set-add-btn mod-cta",
       text: "\u6DFB\u52A0\u6A21\u578B"
@@ -87,20 +110,27 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
       await this.plugin.saveSettings();
       this.display();
     });
-    containerEl.createEl("h3", { text: "\u5DF2\u6DFB\u52A0\u6A21\u578B" });
+  }
+  /** 模型列表：名称 / 供应商 + 设为默认 / 修改 / 删除 */
+  renderModelList(containerEl) {
+    const card = containerEl.createDiv({ cls: "ai-set-card" });
+    card.createEl("h3", { text: "\u5DF2\u6DFB\u52A0\u6A21\u578B" });
     if (this.plugin.settings.models.length === 0) {
-      containerEl.createEl("p", {
+      card.createEl("p", {
         cls: "ai-set-empty",
         text: "\u8FD8\u6CA1\u6709\u6A21\u578B\uFF0C\u5148\u5728\u4E0A\u65B9\u6DFB\u52A0\u3002"
       });
+      return;
     }
     this.plugin.settings.models.forEach((m) => {
-      const row = containerEl.createDiv({ cls: "ai-set-model-row" });
-      row.createEl("span", { cls: "ai-set-model-name", text: m.name });
-      row.createEl("span", { cls: "ai-set-model-provider", text: m.provider });
+      const row = card.createDiv({ cls: "ai-set-model-row" });
+      const info = row.createDiv({ cls: "ai-set-model-info" });
+      info.createEl("span", { cls: "ai-set-model-name", text: m.name });
+      info.createEl("span", { cls: "ai-set-model-provider", text: m.provider });
+      const actions = row.createDiv({ cls: "ai-set-model-actions" });
       const isDefault = this.plugin.settings.defaultModelId === m.id;
-      const def = row.createEl("button", {
-        cls: "ai-set-model-default" + (isDefault ? " is-default" : ""),
+      const def = actions.createEl("button", {
+        cls: "ai-set-model-btn" + (isDefault ? " is-default" : ""),
         text: isDefault ? "\u9ED8\u8BA4 \u2713" : "\u8BBE\u4E3A\u9ED8\u8BA4"
       });
       def.addEventListener("click", async () => {
@@ -108,8 +138,13 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
         this.display();
       });
-      const del = row.createEl("button", {
-        cls: "ai-set-model-del",
+      const edit = actions.createEl("button", {
+        cls: "ai-set-model-btn",
+        text: "\u4FEE\u6539"
+      });
+      edit.addEventListener("click", () => this.renderEditForm(row, m));
+      const del = actions.createEl("button", {
+        cls: "ai-set-model-btn ai-set-model-del",
         text: "\u5220\u9664"
       });
       del.addEventListener("click", async () => {
@@ -124,7 +159,45 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
         this.display();
       });
     });
-    new import_obsidian.Setting(containerEl).setName("\u9ED8\u8BA4\u6A21\u578B").setDesc("\u65B0\u5BF9\u8BDD / \u5212\u8BCD\u4F7F\u7528\u7684\u9ED8\u8BA4\u6A21\u578B").addDropdown((d) => {
+  }
+  /** 行内编辑模型：名称 / Key（带眼睛）/ baseUrl + 保存 / 取消 */
+  renderEditForm(row, m) {
+    var _a;
+    row.empty();
+    row.addClass("is-editing");
+    const nameInput = row.createEl("input", {
+      cls: "ai-set-input",
+      value: m.name,
+      placeholder: "\u6A21\u578B\u540D\u79F0"
+    });
+    const keyInput = createKeyInput(row, m.apiKey);
+    const urlInput = row.createEl("input", {
+      cls: "ai-set-input",
+      value: (_a = m.baseUrl) != null ? _a : "",
+      placeholder: "base URL\uFF08\u53EF\u9009\uFF0C\u4EE3\u7406 / \u7F51\u5173\u7528\uFF09"
+    });
+    const btnWrap = row.createDiv({ cls: "ai-set-model-actions" });
+    const save = btnWrap.createEl("button", {
+      cls: "ai-set-model-btn mod-cta",
+      text: "\u4FDD\u5B58"
+    });
+    save.addEventListener("click", async () => {
+      m.name = nameInput.value.trim() || m.name;
+      m.apiKey = keyInput.value.trim() || m.apiKey;
+      m.baseUrl = urlInput.value.trim() || void 0;
+      await this.plugin.saveSettings();
+      this.display();
+    });
+    const cancel = btnWrap.createEl("button", {
+      cls: "ai-set-model-btn",
+      text: "\u53D6\u6D88"
+    });
+    cancel.addEventListener("click", () => this.display());
+  }
+  /** 默认模型下拉 + 系统指令 */
+  renderGeneral(containerEl) {
+    const card = containerEl.createDiv({ cls: "ai-set-card" });
+    new import_obsidian.Setting(card).setName("\u9ED8\u8BA4\u6A21\u578B").setDesc("\u65B0\u5BF9\u8BDD / \u5212\u8BCD\u4F7F\u7528\u7684\u9ED8\u8BA4\u6A21\u578B").addDropdown((d) => {
       this.plugin.settings.models.forEach((m) => d.addOption(m.id, m.name));
       d.setValue(this.plugin.settings.defaultModelId);
       d.onChange(async (v) => {
@@ -132,16 +205,7 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian.Setting(containerEl).setName("\u5212\u8BCD\u7ED3\u679C\u63D2\u5165\u4F4D\u7F6E").setDesc("\u5728\u5212\u8BCD\u60AC\u6D6E\u6846\u70B9\u51FB\u300C\u63D2\u5165\u300D\u65F6\u7684\u843D\u70B9").addDropdown((d) => {
-      d.addOption("cursor", "\u5149\u6807\u5904");
-      d.addOption("after", "\u9009\u533A\u4E4B\u540E");
-      d.setValue(this.plugin.settings.insertMode);
-      d.onChange(async (v) => {
-        this.plugin.settings.insertMode = v;
-        await this.plugin.saveSettings();
-      });
-    });
-    new import_obsidian.Setting(containerEl).setName("\u7CFB\u7EDF\u6307\u4EE4\uFF08\u53EF\u9009\uFF09").setDesc("\u8FFD\u52A0\u7ED9\u6A21\u578B\u7684\u5168\u5C40\u8BBE\u5B9A\uFF0C\u4F8B\u5982\u201C\u7528\u7B80\u6D01\u4E2D\u6587\u56DE\u7B54\u201D").addTextArea((t) => {
+    new import_obsidian.Setting(card).setName("\u7CFB\u7EDF\u6307\u4EE4\uFF08\u53EF\u9009\uFF09").setDesc("\u8FFD\u52A0\u7ED9\u6A21\u578B\u7684\u5168\u5C40\u8BBE\u5B9A\uFF0C\u4F8B\u5982\u201C\u7528\u7B80\u6D01\u4E2D\u6587\u56DE\u7B54\u201D").addTextArea((t) => {
       t.setValue(this.plugin.settings.systemInstruction);
       t.onChange(async (v) => {
         this.plugin.settings.systemInstruction = v;
@@ -256,13 +320,15 @@ var ChatView = class extends import_obsidian2.ItemView {
     __publicField(this, "modelSelect");
     __publicField(this, "usageEl");
     __publicField(this, "busy", false);
+    /** 会话累计用量 */
+    __publicField(this, "sessionUsage", { prompt: 0, completion: 0, total: 0 });
     this.plugin = plugin;
   }
   getViewType() {
     return VIEW_TYPE_CHAT;
   }
   getDisplayText() {
-    return "AI Chat";
+    return "Margin";
   }
   getIcon() {
     return "message-square";
@@ -306,10 +372,13 @@ var ChatView = class extends import_obsidian2.ItemView {
     });
     clearBtn.addEventListener("click", () => {
       this.messages = [];
+      this.sessionUsage = { prompt: 0, completion: 0, total: 0 };
       this.renderMessages();
+      this.showUsage(null);
     });
     this.messagesEl = root.createDiv({ cls: "ai-chat-messages" });
     this.usageEl = root.createDiv({ cls: "ai-chat-usage" });
+    this.showUsage(null);
     const inputWrap = root.createDiv({ cls: "ai-chat-input-wrap" });
     this.inputEl = inputWrap.createEl("textarea", {
       cls: "ai-chat-input",
@@ -374,6 +443,11 @@ var ChatView = class extends import_obsidian2.ItemView {
           },
           onDone: (usage) => {
             this.messages.push({ role: "model", content: acc });
+            if (usage) {
+              this.sessionUsage.prompt += usage.promptTokens;
+              this.sessionUsage.completion += usage.completionTokens;
+              this.sessionUsage.total += usage.totalTokens;
+            }
             this.showUsage(usage);
           },
           onError: (e) => {
@@ -389,17 +463,20 @@ var ChatView = class extends import_obsidian2.ItemView {
   }
   showUsage(u) {
     if (!u) {
-      this.usageEl.setText("");
+      this.usageEl.setText(
+        `\u4F1A\u8BDD\u7528\u91CF \u2014 \u63D0\u793A ${this.sessionUsage.prompt} \xB7 \u8865\u5168 ${this.sessionUsage.completion} \xB7 \u603B\u8BA1 ${this.sessionUsage.total} tokens`
+      );
       return;
     }
     this.usageEl.setText(
-      `\u672C\u6B21\u7528\u91CF \u2014 \u63D0\u793A ${u.promptTokens} \xB7 \u8865\u5168 ${u.completionTokens} \xB7 \u603B\u8BA1 ${u.totalTokens} tokens`
+      `\u4F1A\u8BDD\u7528\u91CF \u2014 \u63D0\u793A ${this.sessionUsage.prompt} \xB7 \u8865\u5168 ${this.sessionUsage.completion} \xB7 \u603B\u8BA1 ${this.sessionUsage.total} tokens\uFF08\u672C\u6B21 ${u.totalTokens}\uFF09`
     );
   }
 };
 
 // src/selection/popover.ts
 var import_obsidian3 = require("obsidian");
+var Z_TOP = 2147483e3;
 var SelectionPopover = class {
   constructor(plugin, editor, selected) {
     __publicField(this, "plugin");
@@ -415,11 +492,6 @@ var SelectionPopover = class {
     __publicField(this, "usageEl");
     __publicField(this, "lastResult", "");
     __publicField(this, "busy", false);
-    __publicField(this, "onOutside", (e) => {
-      if (this.root && !this.root.contains(e.target)) {
-        this.close();
-      }
-    });
     this.plugin = plugin;
     this.editor = editor;
     this.selected = selected;
@@ -429,25 +501,22 @@ var SelectionPopover = class {
   open() {
     const root = document.createElement("div");
     root.className = "ai-popover";
+    root.style.zIndex = String(Z_TOP);
     root.addEventListener("click", (e) => e.stopPropagation());
-    const sel = window.getSelection();
-    let top = 120;
-    let left = 120;
-    if (sel && sel.rangeCount > 0) {
-      const r = sel.getRangeAt(0).getBoundingClientRect();
-      top = r.bottom + 6;
-      left = r.left;
-    }
-    top = Math.min(top, window.innerHeight - 340);
-    left = Math.max(8, Math.min(left, window.innerWidth - 372));
-    root.style.top = `${top}px`;
-    root.style.left = `${left}px`;
     const header = root.createDiv({ cls: "ai-popover-header" });
-    header.createSpan({ cls: "ai-popover-title", text: "AI \u5BF9\u8BDD" });
-    const close = header.createSpan({ cls: "ai-popover-close", text: "\xD7" });
-    close.addEventListener("click", () => this.close());
+    const title = header.createSpan({ cls: "ai-popover-title", text: "Margin" });
+    title.addClass("ai-popover-drag");
+    const close = header.createEl("button", {
+      cls: "ai-popover-close",
+      text: "\u2715",
+      attr: { type: "button", title: "\u5173\u95ED" }
+    });
+    close.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.close();
+    });
     const ctx = root.createDiv({ cls: "ai-popover-ctx" });
-    ctx.createSpan({ text: "\u9009\u533A\uFF1A" });
+    ctx.createSpan({ cls: "ai-popover-ctx-label", text: "\u9009\u533A" });
     ctx.createSpan({
       cls: "ai-popover-ctx-text",
       text: this.selected.slice(0, 120) + (this.selected.length > 120 ? "\u2026" : "")
@@ -459,7 +528,7 @@ var SelectionPopover = class {
     const inputWrap = root.createDiv({ cls: "ai-popover-input-wrap" });
     this.inputEl = inputWrap.createEl("textarea", {
       cls: "ai-popover-input",
-      placeholder: "\u8F93\u5165\u6307\u4EE4\uFF0C\u4F8B\u5982\uFF1A\u89E3\u91CA\u8FD9\u6BB5 / \u6539\u5199\u6210\u53E3\u8BED / \u7FFB\u8BD1\u4E3A\u82F1\u6587"
+      placeholder: "\u57FA\u4E8E\u9009\u533A\u63D0\u95EE\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C"
     });
     const send = inputWrap.createEl("button", {
       cls: "ai-popover-send mod-cta",
@@ -475,13 +544,64 @@ var SelectionPopover = class {
     document.body.appendChild(root);
     this.root = root;
     this.inputEl.focus();
-    setTimeout(() => {
-      document.addEventListener("click", this.onOutside, true);
-    }, 0);
+    const rect = this.getSelectionRect();
+    this.position(rect);
+    this.makeDraggable(header);
+  }
+  /** 读取选区在屏幕上的位置（编辑器内选中文字） */
+  getSelectionRect() {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const r = sel.getRangeAt(0).getBoundingClientRect();
+      if (r && (r.width > 0 || r.height > 0)) return r;
+    }
+    return null;
+  }
+  /** 固定定位 + 边界钳制 */
+  position(rect) {
+    if (!this.root) return;
+    const w = 380;
+    const h = 420;
+    let x = rect ? rect.left : window.innerWidth / 2 - w / 2;
+    let y = rect ? rect.bottom + 8 : window.innerHeight / 2 - h / 2;
+    x = Math.max(8, Math.min(x, window.innerWidth - w - 8));
+    y = Math.max(8, Math.min(y, window.innerHeight - h - 8));
+    this.root.style.width = w + "px";
+    this.root.style.left = x + "px";
+    this.root.style.top = y + "px";
+  }
+  /** 按住头部拖动悬浮窗 */
+  makeDraggable(header) {
+    let dragging = false;
+    let startX = 0;
+    let startY = 0;
+    let origX = 0;
+    let origY = 0;
+    header.addEventListener("mousedown", (e) => {
+      var _a, _b, _c, _d;
+      if (e.target.closest(".ai-popover-close")) return;
+      dragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      origX = (_b = (_a = this.root) == null ? void 0 : _a.offsetLeft) != null ? _b : 0;
+      origY = (_d = (_c = this.root) == null ? void 0 : _c.offsetTop) != null ? _d : 0;
+      e.preventDefault();
+    });
+    document.addEventListener("mousemove", (e) => {
+      if (!dragging || !this.root) return;
+      let x = origX + (e.clientX - startX);
+      let y = origY + (e.clientY - startY);
+      x = Math.max(0, Math.min(x, window.innerWidth - this.root.offsetWidth));
+      y = Math.max(0, Math.min(y, window.innerHeight - this.root.offsetHeight));
+      this.root.style.left = x + "px";
+      this.root.style.top = y + "px";
+    });
+    document.addEventListener("mouseup", () => {
+      dragging = false;
+    });
   }
   close() {
     var _a;
-    document.removeEventListener("click", this.onOutside, true);
     (_a = this.root) == null ? void 0 : _a.remove();
     this.root = void 0;
   }
@@ -492,38 +612,57 @@ var SelectionPopover = class {
       this.actionsEl.setText("");
       return;
     }
-    const copy = this.actionsEl.createEl("button", {
-      cls: "ai-popover-btn",
-      text: "\u590D\u5236"
-    });
-    copy.addEventListener("click", () => {
+    const mk = (label, icon, fn) => {
+      const b = this.actionsEl.createEl("button", {
+        cls: "ai-popover-btn",
+        text: `${icon} ${label}`
+      });
+      b.addEventListener("click", fn);
+    };
+    mk("\u590D\u5236", "\u{1F4CB}", () => {
       navigator.clipboard.writeText(this.lastResult);
       new import_obsidian3.Notice("\u5DF2\u590D\u5236\u5230\u526A\u8D34\u677F");
     });
-    const insert = this.actionsEl.createEl("button", {
-      cls: "ai-popover-btn",
-      text: "\u63D2\u5165\u5149\u6807\u5904"
-    });
-    insert.addEventListener("click", () => {
+    mk("\u63D2\u5165\u5149\u6807", "\u{1F4E5}", () => {
       this.editor.replaceRange(this.lastResult, this.editor.getCursor());
       new import_obsidian3.Notice("\u5DF2\u63D2\u5165\u5230\u5149\u6807\u5904");
     });
-    const cover = this.actionsEl.createEl("button", {
-      cls: "ai-popover-btn mod-warning",
-      text: "\u8986\u76D6\u9009\u533A"
-    });
-    cover.addEventListener("click", () => {
+    mk("\u8986\u76D6\u9009\u533A", "\u{1F501}", () => {
       this.editor.replaceRange(this.lastResult, this.from, this.to);
       new import_obsidian3.Notice("\u5DF2\u8986\u76D6\u9009\u533A");
     });
-    const cont = this.actionsEl.createEl("button", {
-      cls: "ai-popover-btn",
-      text: "\u7EE7\u7EED\u5BF9\u8BDD"
-    });
-    cont.addEventListener("click", () => {
+    mk("\u7EE7\u7EED\u5BF9\u8BDD", "\u{1F4AC}", () => {
       var _a;
       return (_a = this.inputEl) == null ? void 0 : _a.focus();
     });
+  }
+  /** 渲染完整对话历史（用户 + AI），用于刷新显示 */
+  renderMessages() {
+    if (!this.messagesEl) return;
+    this.messagesEl.empty();
+    for (const m of this.messages) {
+      const bubble = this.messagesEl.createDiv({
+        cls: `ai-popover-msg ai-popover-msg-${m.role}`
+      });
+      bubble.createDiv({
+        cls: "ai-popover-msg-role",
+        text: m.role === "user" ? "\u4F60" : "AI"
+      });
+      bubble.createDiv({
+        cls: "ai-popover-msg-content",
+        text: this.displayText(m)
+      });
+    }
+    this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+  }
+  /** 首条用户消息带选区上下文，展示时只显示问题本身 */
+  displayText(m) {
+    const marker = "\u8BF7\u57FA\u4E8E\u4E0A\u8FF0\u6587\u672C\u56DE\u7B54\u6211\u7684\u95EE\u9898\uFF1A";
+    const i = m.content.indexOf(marker);
+    if (m.role === "user" && i >= 0) {
+      return "\u{1F4CC} \u57FA\u4E8E\u9009\u533A\uFF1A" + m.content.slice(i + marker.length);
+    }
+    return m.content;
   }
   async send() {
     var _a;
@@ -551,10 +690,12 @@ ${this.selected}
     }
     if (this.inputEl) this.inputEl.value = "";
     this.busy = true;
+    this.renderMessages();
     const aiBubble = this.messagesEl.createDiv({
       cls: "ai-popover-msg ai-popover-msg-model"
     });
-    const contentEl = aiBubble.createEl("div", {
+    aiBubble.createDiv({ cls: "ai-popover-msg-role", text: "AI" });
+    const contentEl = aiBubble.createDiv({
       cls: "ai-popover-msg-content",
       text: ""
     });
@@ -588,9 +729,13 @@ ${this.selected}
     }
   }
   renderUsage(u) {
-    if (!u || !this.usageEl) return;
+    if (!this.usageEl) return;
+    if (!u) {
+      this.usageEl.setText("");
+      return;
+    }
     this.usageEl.setText(
-      `\u7528\u91CF: \u63D0\u793A ${u.promptTokens} \xB7 \u8865\u5168 ${u.completionTokens} \xB7 \u603B\u8BA1 ${u.totalTokens}`
+      `\u7528\u91CF \u2014 \u63D0\u793A ${u.promptTokens} \xB7 \u8865\u5168 ${u.completionTokens} \xB7 \u603B\u8BA1 ${u.totalTokens} tokens`
     );
   }
 };
@@ -615,7 +760,7 @@ var AIPlugin = class extends import_obsidian4.Plugin {
           const selected = editor.getSelection();
           if (!selected) return;
           menu.addItem((item) => {
-            item.setTitle("AI \u5BF9\u8BDD").setIcon("sparkles").onClick(() => {
+            item.setTitle("Margin").setIcon("sparkles").onClick(() => {
               const popover = new SelectionPopover(
                 this,
                 editor,

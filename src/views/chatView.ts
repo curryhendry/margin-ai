@@ -13,6 +13,8 @@ export class ChatView extends ItemView {
   private modelSelect!: HTMLSelectElement;
   private usageEl!: HTMLElement;
   private busy = false;
+  /** 会话累计用量 */
+  private sessionUsage = { prompt: 0, completion: 0, total: 0 };
 
   constructor(leaf: WorkspaceLeaf, plugin: AIPlugin) {
     super(leaf);
@@ -23,7 +25,7 @@ export class ChatView extends ItemView {
     return VIEW_TYPE_CHAT;
   }
   getDisplayText(): string {
-    return "AI Chat";
+    return "Margin";
   }
   getIcon(): string {
     return "message-square";
@@ -76,12 +78,15 @@ export class ChatView extends ItemView {
     });
     clearBtn.addEventListener("click", () => {
       this.messages = [];
+      this.sessionUsage = { prompt: 0, completion: 0, total: 0 };
       this.renderMessages();
+      this.showUsage(null);
     });
 
     this.messagesEl = root.createDiv({ cls: "ai-chat-messages" });
 
     this.usageEl = root.createDiv({ cls: "ai-chat-usage" });
+    this.showUsage(null);
 
     const inputWrap = root.createDiv({ cls: "ai-chat-input-wrap" });
     this.inputEl = inputWrap.createEl("textarea", {
@@ -152,6 +157,11 @@ export class ChatView extends ItemView {
           },
           onDone: (usage) => {
             this.messages.push({ role: "model", content: acc });
+            if (usage) {
+              this.sessionUsage.prompt += usage.promptTokens;
+              this.sessionUsage.completion += usage.completionTokens;
+              this.sessionUsage.total += usage.totalTokens;
+            }
             this.showUsage(usage);
           },
           onError: (e) => {
@@ -168,11 +178,13 @@ export class ChatView extends ItemView {
 
   private showUsage(u: UsageInfo | null): void {
     if (!u) {
-      this.usageEl.setText("");
+      this.usageEl.setText(
+        `会话用量 — 提示 ${this.sessionUsage.prompt} · 补全 ${this.sessionUsage.completion} · 总计 ${this.sessionUsage.total} tokens`
+      );
       return;
     }
     this.usageEl.setText(
-      `本次用量 — 提示 ${u.promptTokens} · 补全 ${u.completionTokens} · 总计 ${u.totalTokens} tokens`
+      `会话用量 — 提示 ${this.sessionUsage.prompt} · 补全 ${this.sessionUsage.completion} · 总计 ${this.sessionUsage.total} tokens（本次 ${u.totalTokens}）`
     );
   }
 }

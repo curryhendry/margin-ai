@@ -34,7 +34,7 @@ export default class AIPlugin extends Plugin {
           if (!selected) return;
           menu.addItem((item) => {
             item
-              .setTitle("AI 对话")
+              .setTitle("Margin")
               .setIcon("sparkles")
               .onClick(() => {
                 const popover = new SelectionPopover(

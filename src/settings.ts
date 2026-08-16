@@ -21,8 +21,6 @@ export interface AIPluginSettings {
   models: AIModel[];
   /** 默认模型 ID */
   defaultModelId: string;
-  /** 划词结果“插入”时的落点 */
-  insertMode: "cursor" | "after";
   /** 全局系统指令（可选） */
   systemInstruction: string;
 }
@@ -30,9 +28,33 @@ export interface AIPluginSettings {
 export const DEFAULT_SETTINGS: AIPluginSettings = {
   models: [],
   defaultModelId: "",
-  insertMode: "cursor",
   systemInstruction: "",
 };
+
+/**
+ * 创建带“眼睛”切换明文的 Key 输入框（密码 / 明文）。
+ * 返回 input，眼睛按钮自动挂在旁边。
+ */
+function createKeyInput(container: HTMLElement, value = ""): HTMLInputElement {
+  const wrap = container.createDiv({ cls: "ai-set-key-wrap" });
+  const input = wrap.createEl("input", {
+    cls: "ai-set-input ai-set-key-input",
+    placeholder: "API Key",
+    type: "password",
+    value,
+  });
+  const eye = wrap.createEl("button", {
+    cls: "ai-set-eye",
+    text: "👁",
+    attr: { type: "button", title: "显示 / 隐藏" },
+  });
+  eye.addEventListener("click", () => {
+    const show = input.type === "password";
+    input.type = show ? "text" : "password";
+    eye.setText(show ? "🙈" : "👁");
+  });
+  return input;
+}
 
 export class AISettingsTab extends PluginSettingTab {
   plugin: AIPlugin;
@@ -45,25 +67,30 @@ export class AISettingsTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
+    containerEl.addClass("ai-set");
+
     containerEl.createEl("h2", { text: "Margin 设置" });
 
-    // ---- 添加模型 ----
-    containerEl.createEl("h3", { text: "添加模型" });
-    containerEl.createEl("p", {
+    this.renderAddModel(containerEl);
+    this.renderModelList(containerEl);
+    this.renderGeneral(containerEl);
+  }
+
+  /** 添加模型：名称 + Key（带眼睛）+ 添加按钮 */
+  private renderAddModel(containerEl: HTMLElement): void {
+    const card = containerEl.createDiv({ cls: "ai-set-card" });
+    card.createEl("h3", { text: "添加模型" });
+    card.createEl("p", {
       cls: "ai-set-hint",
-      text: "模型名称填写你想要的型号（如 gemini-3.5-flash），API Key 从 Google AI Studio 获取。可添加多个并随时切换。",
+      text: "模型名称填你想要的型号（如 gemini-3.5-flash），API Key 从 Google AI Studio 获取。可添加多个并随时切换。",
     });
 
-    const addWrap = containerEl.createDiv({ cls: "ai-set-add" });
+    const addWrap = card.createDiv({ cls: "ai-set-add" });
     const nameInput = addWrap.createEl("input", {
       cls: "ai-set-input",
       placeholder: "模型名称，如 gemini-3.5-flash",
     });
-    const keyInput = addWrap.createEl("input", {
-      cls: "ai-set-input",
-      placeholder: "API Key",
-      type: "password",
-    });
+    const keyInput = createKeyInput(addWrap);
     const addBtn = addWrap.createEl("button", {
       cls: "ai-set-add-btn mod-cta",
       text: "添加模型",
@@ -76,7 +103,10 @@ export class AISettingsTab extends PluginSettingTab {
         return;
       }
       const model: AIModel = {
-        id: "m_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        id:
+          "m_" +
+          Date.now().toString(36) +
+          Math.random().toString(36).slice(2, 6),
         name,
         provider: "gemini",
         apiKey: key,
@@ -88,23 +118,33 @@ export class AISettingsTab extends PluginSettingTab {
       await this.plugin.saveSettings();
       this.display();
     });
+  }
 
-    // ---- 已添加模型列表 ----
-    containerEl.createEl("h3", { text: "已添加模型" });
+  /** 模型列表：名称 / 供应商 + 设为默认 / 修改 / 删除 */
+  private renderModelList(containerEl: HTMLElement): void {
+    const card = containerEl.createDiv({ cls: "ai-set-card" });
+    card.createEl("h3", { text: "已添加模型" });
+
     if (this.plugin.settings.models.length === 0) {
-      containerEl.createEl("p", {
+      card.createEl("p", {
         cls: "ai-set-empty",
         text: "还没有模型，先在上方添加。",
       });
+      return;
     }
+
     this.plugin.settings.models.forEach((m) => {
-      const row = containerEl.createDiv({ cls: "ai-set-model-row" });
-      row.createEl("span", { cls: "ai-set-model-name", text: m.name });
-      row.createEl("span", { cls: "ai-set-model-provider", text: m.provider });
+      const row = card.createDiv({ cls: "ai-set-model-row" });
+
+      const info = row.createDiv({ cls: "ai-set-model-info" });
+      info.createEl("span", { cls: "ai-set-model-name", text: m.name });
+      info.createEl("span", { cls: "ai-set-model-provider", text: m.provider });
+
+      const actions = row.createDiv({ cls: "ai-set-model-actions" });
 
       const isDefault = this.plugin.settings.defaultModelId === m.id;
-      const def = row.createEl("button", {
-        cls: "ai-set-model-default" + (isDefault ? " is-default" : ""),
+      const def = actions.createEl("button", {
+        cls: "ai-set-model-btn" + (isDefault ? " is-default" : ""),
         text: isDefault ? "默认 ✓" : "设为默认",
       });
       def.addEventListener("click", async () => {
@@ -113,8 +153,14 @@ export class AISettingsTab extends PluginSettingTab {
         this.display();
       });
 
-      const del = row.createEl("button", {
-        cls: "ai-set-model-del",
+      const edit = actions.createEl("button", {
+        cls: "ai-set-model-btn",
+        text: "修改",
+      });
+      edit.addEventListener("click", () => this.renderEditForm(row, m));
+
+      const del = actions.createEl("button", {
+        cls: "ai-set-model-btn ai-set-model-del",
         text: "删除",
       });
       del.addEventListener("click", async () => {
@@ -129,9 +175,49 @@ export class AISettingsTab extends PluginSettingTab {
         this.display();
       });
     });
+  }
 
-    // ---- 默认模型下拉（备用切换入口） ----
-    new Setting(containerEl)
+  /** 行内编辑模型：名称 / Key（带眼睛）/ baseUrl + 保存 / 取消 */
+  private renderEditForm(row: HTMLElement, m: AIModel): void {
+    row.empty();
+    row.addClass("is-editing");
+
+    const nameInput = row.createEl("input", {
+      cls: "ai-set-input",
+      value: m.name,
+      placeholder: "模型名称",
+    });
+    const keyInput = createKeyInput(row, m.apiKey);
+    const urlInput = row.createEl("input", {
+      cls: "ai-set-input",
+      value: m.baseUrl ?? "",
+      placeholder: "base URL（可选，代理 / 网关用）",
+    });
+
+    const btnWrap = row.createDiv({ cls: "ai-set-model-actions" });
+    const save = btnWrap.createEl("button", {
+      cls: "ai-set-model-btn mod-cta",
+      text: "保存",
+    });
+    save.addEventListener("click", async () => {
+      m.name = nameInput.value.trim() || m.name;
+      m.apiKey = keyInput.value.trim() || m.apiKey;
+      m.baseUrl = urlInput.value.trim() || undefined;
+      await this.plugin.saveSettings();
+      this.display();
+    });
+    const cancel = btnWrap.createEl("button", {
+      cls: "ai-set-model-btn",
+      text: "取消",
+    });
+    cancel.addEventListener("click", () => this.display());
+  }
+
+  /** 默认模型下拉 + 系统指令 */
+  private renderGeneral(containerEl: HTMLElement): void {
+    const card = containerEl.createDiv({ cls: "ai-set-card" });
+
+    new Setting(card)
       .setName("默认模型")
       .setDesc("新对话 / 划词使用的默认模型")
       .addDropdown((d) => {
@@ -143,22 +229,7 @@ export class AISettingsTab extends PluginSettingTab {
         });
       });
 
-    // ---- 插入落点 ----
-    new Setting(containerEl)
-      .setName("划词结果插入位置")
-      .setDesc("在划词悬浮框点击「插入」时的落点")
-      .addDropdown((d) => {
-        d.addOption("cursor", "光标处");
-        d.addOption("after", "选区之后");
-        d.setValue(this.plugin.settings.insertMode);
-        d.onChange(async (v) => {
-          this.plugin.settings.insertMode = v as "cursor" | "after";
-          await this.plugin.saveSettings();
-        });
-      });
-
-    // ---- 系统指令 ----
-    new Setting(containerEl)
+    new Setting(card)
       .setName("系统指令（可选）")
       .setDesc("追加给模型的全局设定，例如“用简洁中文回答”")
       .addTextArea((t) => {
