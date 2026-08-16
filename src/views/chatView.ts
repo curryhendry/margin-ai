@@ -1,21 +1,34 @@
-import { ItemView, WorkspaceLeaf, Notice } from "obsidian";
+import { EventRef, ItemView, WorkspaceLeaf, Notice } from "obsidian";
 import type AIPlugin from "../main";
 import { ChatMessage, UsageInfo } from "../llm/types";
 import { getProvider } from "../llm";
-import { fmtLimit, modelLimitsText } from "../settings";
+import { modelLimitsText } from "../settings";
 
 export const VIEW_TYPE_CHAT = "margin-chat";
 
+interface SessionUsage {
+  prompt: number;
+  completion: number;
+  total: number;
+}
+
+/**
+ * 右侧 Chat。对话按笔记隔离：
+ * 切换笔记时自动保存当前上下文、加载新笔记的上下文。
+ */
 export class ChatView extends ItemView {
   plugin: AIPlugin;
   messages: ChatMessage[] = [];
+  private histories = new Map<string, ChatMessage[]>();
+  private usageByNote = new Map<string, SessionUsage>();
+  private noteKey = "";
+  private fileOpenRef: EventRef | null = null;
   private messagesEl!: HTMLElement;
   private inputEl!: HTMLTextAreaElement;
   private modelSelect!: HTMLSelectElement;
   private usageEl!: HTMLElement;
   private busy = false;
-  /** 会话累计用量 */
-  private sessionUsage = { prompt: 0, completion: 0, total: 0 };
+  private sessionUsage: SessionUsage = { prompt: 0, completion: 0, total: 0 };
 
   constructor(leaf: WorkspaceLeaf, plugin: AIPlugin) {
     super(leaf);
@@ -34,9 +47,39 @@ export class ChatView extends ItemView {
 
   async onOpen(): Promise<void> {
     this.render();
+    this.noteKey = this.currentNote();
+    this.loadNote();
+    this.fileOpenRef = this.app.workspace.on("file-open", () =>
+      this.switchNote()
+    );
   }
   async onClose(): Promise<void> {
-    // nothing
+    if (this.fileOpenRef) this.app.workspace.offref(this.fileOpenRef);
+    this.saveNote();
+  }
+
+  private currentNote(): string {
+    return this.app.workspace.getActiveFile()?.path ?? "(无笔记)";
+  }
+
+  private saveNote(): void {
+    if (!this.noteKey) return;
+    this.histories.set(this.noteKey, this.messages);
+    this.usageByNote.set(this.noteKey, { ...this.sessionUsage });
+  }
+
+  private loadNote(): void {
+    this.messages = this.histories.get(this.noteKey) ?? [];
+    this.sessionUsage =
+      this.usageByNote.get(this.noteKey) ?? { prompt: 0, completion: 0, total: 0 };
+    this.renderMessages();
+    this.showUsage(null);
+  }
+
+  private switchNote(): void {
+    this.saveNote();
+    this.noteKey = this.currentNote();
+    this.loadNote();
   }
 
   /** 设置变更后刷新模型下拉 */
@@ -75,11 +118,18 @@ export class ChatView extends ItemView {
     });
     this.populateModels();
     this.modelSelect.addEventListener("change", () => this.showUsage(null));
-    const clearBtn = header.createEl("button", {
+
+    // 当前笔记标识
+    const note = header.createEl("span", { cls: "ai-chat-note" });
+    note.setText(this.noteKey ? "📄 " + this.noteKey : "");
+
+    const newBtn = header.createEl("button", {
       cls: "ai-chat-clear",
-      text: "清空",
+      text: "新对话",
     });
-    clearBtn.addEventListener("click", () => {
+    newBtn.addEventListener("click", () => {
+      this.histories.delete(this.noteKey);
+      this.usageByNote.delete(this.noteKey);
       this.messages = [];
       this.sessionUsage = { prompt: 0, completion: 0, total: 0 };
       this.renderMessages();
@@ -96,7 +146,6 @@ export class ChatView extends ItemView {
       cls: "ai-chat-input",
       placeholder: "输入消息，Enter 发送，Shift+Enter 换行",
     });
-    // 不带 mod-cta，避免默认大紫按钮
     const sendBtn = inputWrap.createEl("button", {
       cls: "ai-chat-send",
       text: "发送",
@@ -124,7 +173,7 @@ export class ChatView extends ItemView {
       });
       bubble.createEl("div", { cls: "ai-msg-content", text: m.content });
 
-      // 复制图标：hover 显示，点击复制本条消息
+      // 复制（每条消息）
       const copyBtn = bubble.createEl("button", {
         cls: "ai-msg-copy",
         text: "📋",
@@ -135,6 +184,23 @@ export class ChatView extends ItemView {
         navigator.clipboard.writeText(m.content);
         new Notice("已复制");
       });
+
+      // 用户消息可编辑重发
+      if (m.role === "user") {
+        const editBtn = bubble.createEl("button", {
+          cls: "ai-msg-edit",
+          text: "✏️",
+          attr: { type: "button", title: "编辑并重发" },
+        });
+        editBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const idx = this.messages.indexOf(m);
+          this.messages = this.messages.slice(0, idx);
+          this.inputEl.value = m.content;
+          this.renderMessages();
+          this.inputEl.focus();
+        });
+      }
     }
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   }
@@ -202,18 +268,18 @@ export class ChatView extends ItemView {
     }
   }
 
-  /** 用量 / 模型限额展示。两行：上行模型+限额，下行会话+本次用量 */
+  /** 用量 / 模型限额。两行：上行模型+限额，下行会话+本次用量 */
   private showUsage(u: UsageInfo | null): void {
     this.usageEl.empty();
     const m = this.currentModel();
     const limits = m ? modelLimitsText(m) : "";
     const row1 = this.usageEl.createDiv({ cls: "ai-chat-usage-line" });
-    row1.setText(
-      `${m?.name ?? "未选模型"}${limits ? " · " + limits : ""}`
-    );
+    row1.setText(`${m?.name ?? "未选模型"}${limits ? " · " + limits : ""}`);
     const row2 = this.usageEl.createDiv({ cls: "ai-chat-usage-line" });
     const s = this.sessionUsage;
-    const tail = u ? `本次 ${u.promptTokens}+${u.completionTokens}=${u.totalTokens}` : "—";
+    const tail = u
+      ? `本次 ${u.promptTokens}+${u.completionTokens}=${u.totalTokens}`
+      : "—";
     row2.setText(
       `会话累计 ${s.prompt}+${s.completion}=${s.total} tokens · ${tail}`
     );

@@ -384,12 +384,15 @@ var ChatView = class extends import_obsidian2.ItemView {
     super(leaf);
     __publicField(this, "plugin");
     __publicField(this, "messages", []);
+    __publicField(this, "histories", /* @__PURE__ */ new Map());
+    __publicField(this, "usageByNote", /* @__PURE__ */ new Map());
+    __publicField(this, "noteKey", "");
+    __publicField(this, "fileOpenRef", null);
     __publicField(this, "messagesEl");
     __publicField(this, "inputEl");
     __publicField(this, "modelSelect");
     __publicField(this, "usageEl");
     __publicField(this, "busy", false);
-    /** 会话累计用量 */
     __publicField(this, "sessionUsage", { prompt: 0, completion: 0, total: 0 });
     this.plugin = plugin;
   }
@@ -404,8 +407,37 @@ var ChatView = class extends import_obsidian2.ItemView {
   }
   async onOpen() {
     this.render();
+    this.noteKey = this.currentNote();
+    this.loadNote();
+    this.fileOpenRef = this.app.workspace.on(
+      "file-open",
+      () => this.switchNote()
+    );
   }
   async onClose() {
+    if (this.fileOpenRef) this.app.workspace.offref(this.fileOpenRef);
+    this.saveNote();
+  }
+  currentNote() {
+    var _a, _b;
+    return (_b = (_a = this.app.workspace.getActiveFile()) == null ? void 0 : _a.path) != null ? _b : "(\u65E0\u7B14\u8BB0)";
+  }
+  saveNote() {
+    if (!this.noteKey) return;
+    this.histories.set(this.noteKey, this.messages);
+    this.usageByNote.set(this.noteKey, { ...this.sessionUsage });
+  }
+  loadNote() {
+    var _a, _b;
+    this.messages = (_a = this.histories.get(this.noteKey)) != null ? _a : [];
+    this.sessionUsage = (_b = this.usageByNote.get(this.noteKey)) != null ? _b : { prompt: 0, completion: 0, total: 0 };
+    this.renderMessages();
+    this.showUsage(null);
+  }
+  switchNote() {
+    this.saveNote();
+    this.noteKey = this.currentNote();
+    this.loadNote();
   }
   /** 设置变更后刷新模型下拉 */
   refreshModels() {
@@ -437,11 +469,15 @@ var ChatView = class extends import_obsidian2.ItemView {
     });
     this.populateModels();
     this.modelSelect.addEventListener("change", () => this.showUsage(null));
-    const clearBtn = header.createEl("button", {
+    const note = header.createEl("span", { cls: "ai-chat-note" });
+    note.setText(this.noteKey ? "\u{1F4C4} " + this.noteKey : "");
+    const newBtn = header.createEl("button", {
       cls: "ai-chat-clear",
-      text: "\u6E05\u7A7A"
+      text: "\u65B0\u5BF9\u8BDD"
     });
-    clearBtn.addEventListener("click", () => {
+    newBtn.addEventListener("click", () => {
+      this.histories.delete(this.noteKey);
+      this.usageByNote.delete(this.noteKey);
       this.messages = [];
       this.sessionUsage = { prompt: 0, completion: 0, total: 0 };
       this.renderMessages();
@@ -489,6 +525,21 @@ var ChatView = class extends import_obsidian2.ItemView {
         navigator.clipboard.writeText(m.content);
         new import_obsidian2.Notice("\u5DF2\u590D\u5236");
       });
+      if (m.role === "user") {
+        const editBtn = bubble.createEl("button", {
+          cls: "ai-msg-edit",
+          text: "\u270F\uFE0F",
+          attr: { type: "button", title: "\u7F16\u8F91\u5E76\u91CD\u53D1" }
+        });
+        editBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const idx = this.messages.indexOf(m);
+          this.messages = this.messages.slice(0, idx);
+          this.inputEl.value = m.content;
+          this.renderMessages();
+          this.inputEl.focus();
+        });
+      }
     }
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   }
@@ -552,16 +603,14 @@ var ChatView = class extends import_obsidian2.ItemView {
       this.busy = false;
     }
   }
-  /** 用量 / 模型限额展示。两行：上行模型+限额，下行会话+本次用量 */
+  /** 用量 / 模型限额。两行：上行模型+限额，下行会话+本次用量 */
   showUsage(u) {
     var _a;
     this.usageEl.empty();
     const m = this.currentModel();
     const limits = m ? modelLimitsText(m) : "";
     const row1 = this.usageEl.createDiv({ cls: "ai-chat-usage-line" });
-    row1.setText(
-      `${(_a = m == null ? void 0 : m.name) != null ? _a : "\u672A\u9009\u6A21\u578B"}${limits ? " \xB7 " + limits : ""}`
-    );
+    row1.setText(`${(_a = m == null ? void 0 : m.name) != null ? _a : "\u672A\u9009\u6A21\u578B"}${limits ? " \xB7 " + limits : ""}`);
     const row2 = this.usageEl.createDiv({ cls: "ai-chat-usage-line" });
     const s = this.sessionUsage;
     const tail = u ? `\u672C\u6B21 ${u.promptTokens}+${u.completionTokens}=${u.totalTokens}` : "\u2014";
@@ -574,7 +623,7 @@ var ChatView = class extends import_obsidian2.ItemView {
 // src/selection/popover.ts
 var import_obsidian3 = require("obsidian");
 var Z_TOP = 2147483e3;
-var SelectionPopover = class {
+var _SelectionPopover = class _SelectionPopover {
   constructor(plugin, editor, selected) {
     __publicField(this, "plugin");
     __publicField(this, "editor");
@@ -582,6 +631,7 @@ var SelectionPopover = class {
     __publicField(this, "messages", []);
     __publicField(this, "from");
     __publicField(this, "to");
+    __publicField(this, "noteKey", "");
     __publicField(this, "root");
     __publicField(this, "messagesEl");
     __publicField(this, "inputEl");
@@ -596,6 +646,13 @@ var SelectionPopover = class {
     this.to = editor.getCursor("to");
   }
   open() {
+    var _a, _b;
+    this.noteKey = (_b = (_a = this.plugin.app.workspace.getActiveFile()) == null ? void 0 : _a.path) != null ? _b : "";
+    const saved = _SelectionPopover.savedByNote.get(this.noteKey);
+    if (saved) {
+      this.messages = [...saved.messages];
+      this.lastResult = saved.lastResult;
+    }
     const root = document.createElement("div");
     root.className = "ai-popover";
     root.style.zIndex = String(Z_TOP);
@@ -603,7 +660,17 @@ var SelectionPopover = class {
     const header = root.createDiv({ cls: "ai-popover-header" });
     const title = header.createSpan({ cls: "ai-popover-title", text: "Margin" });
     title.addClass("ai-popover-drag");
-    const close = header.createEl("button", {
+    const right = header.createDiv({ cls: "ai-popover-header-right" });
+    const resetBtn = right.createEl("button", {
+      cls: "ai-popover-reset",
+      text: "\u21BA",
+      attr: { type: "button", title: "\u91CD\u6765\uFF08\u6E05\u7A7A\u672C\u7B14\u8BB0\u5BF9\u8BDD\uFF09" }
+    });
+    resetBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.reset();
+    });
+    const close = right.createEl("button", {
       cls: "ai-popover-close",
       text: "\u2715",
       attr: { type: "button", title: "\u5173\u95ED" }
@@ -612,20 +679,21 @@ var SelectionPopover = class {
       e.stopPropagation();
       this.close();
     });
-    const ctx = root.createDiv({ cls: "ai-popover-ctx" });
-    ctx.createSpan({ cls: "ai-popover-ctx-label", text: "\u9009\u533A" });
-    ctx.createSpan({
-      cls: "ai-popover-ctx-text",
-      text: this.selected.slice(0, 120) + (this.selected.length > 120 ? "\u2026" : "")
-    });
+    if (this.selected) {
+      const ctx = root.createDiv({ cls: "ai-popover-ctx" });
+      ctx.createSpan({ cls: "ai-popover-ctx-label", text: "\u9009\u533A" });
+      ctx.createSpan({
+        cls: "ai-popover-ctx-text",
+        text: this.selected.slice(0, 120) + (this.selected.length > 120 ? "\u2026" : "")
+      });
+    }
     this.messagesEl = root.createDiv({ cls: "ai-popover-messages" });
     this.usageEl = root.createDiv({ cls: "ai-popover-usage" });
     this.actionsEl = root.createDiv({ cls: "ai-popover-actions" });
-    this.renderActions();
     const inputWrap = root.createDiv({ cls: "ai-popover-input-wrap" });
     this.inputEl = inputWrap.createEl("textarea", {
       cls: "ai-popover-input",
-      placeholder: "\u57FA\u4E8E\u9009\u533A\u63D0\u95EE\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C"
+      placeholder: this.selected ? "\u57FA\u4E8E\u9009\u533A\u63D0\u95EE\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C" : "\u8F93\u5165\u95EE\u9898\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C"
     });
     const send = inputWrap.createEl("button", {
       cls: "ai-popover-send",
@@ -640,6 +708,9 @@ var SelectionPopover = class {
     });
     document.body.appendChild(root);
     this.root = root;
+    this.renderMessages();
+    this.renderActions();
+    this.renderUsage(null);
     this.inputEl.focus();
     const rect = this.getSelectionRect();
     this.position(rect);
@@ -655,7 +726,7 @@ var SelectionPopover = class {
   }
   position(rect) {
     if (!this.root) return;
-    const w = 380;
+    const w = 360;
     const h = 420;
     let x = rect ? rect.left : window.innerWidth / 2 - w / 2;
     let y = rect ? rect.bottom + 8 : window.innerHeight / 2 - h / 2;
@@ -673,7 +744,9 @@ var SelectionPopover = class {
     let origY = 0;
     header.addEventListener("mousedown", (e) => {
       var _a, _b, _c, _d;
-      if (e.target.closest(".ai-popover-close")) return;
+      if (e.target.closest(".ai-popover-close, .ai-popover-reset")) {
+        return;
+      }
       dragging = true;
       startX = e.clientX;
       startY = e.clientY;
@@ -694,12 +767,29 @@ var SelectionPopover = class {
       dragging = false;
     });
   }
+  /** 关闭时把对话存回笔记维度 */
   close() {
     var _a;
+    if (this.noteKey && this.messages.length > 0) {
+      _SelectionPopover.savedByNote.set(this.noteKey, {
+        messages: [...this.messages],
+        lastResult: this.lastResult
+      });
+    }
     (_a = this.root) == null ? void 0 : _a.remove();
     this.root = void 0;
   }
-  /** 仅保留「插入光标 / 覆盖选区」两个真操作；复制由每条消息自带图标完成。 */
+  /** 重来：清空本笔记对话与已存记录 */
+  reset() {
+    var _a;
+    this.messages = [];
+    this.lastResult = "";
+    _SelectionPopover.savedByNote.delete(this.noteKey);
+    this.renderMessages();
+    this.renderActions();
+    this.renderUsage(null);
+    (_a = this.inputEl) == null ? void 0 : _a.focus();
+  }
   renderActions() {
     if (!this.actionsEl) return;
     this.actionsEl.empty();
@@ -746,9 +836,21 @@ var SelectionPopover = class {
         navigator.clipboard.writeText(text);
         new import_obsidian3.Notice("\u5DF2\u590D\u5236");
       });
+      if (m.role === "user") {
+        const editBtn = bubble.createEl("button", {
+          cls: "ai-popover-msg-edit",
+          text: "\u270F\uFE0F",
+          attr: { type: "button", title: "\u7F16\u8F91\u5E76\u91CD\u53D1" }
+        });
+        editBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.editMessage(m);
+        });
+      }
     }
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   }
+  /** 首条带选区上下文的消息，展示时只显示问题本身 */
   displayText(m) {
     const marker = "\u8BF7\u57FA\u4E8E\u4E0A\u8FF0\u6587\u672C\u56DE\u7B54\u6211\u7684\u95EE\u9898\uFF1A";
     const i = m.content.indexOf(marker);
@@ -756,6 +858,17 @@ var SelectionPopover = class {
       return "\u{1F4CC} \u57FA\u4E8E\u9009\u533A\uFF1A" + m.content.slice(i + marker.length);
     }
     return m.content;
+  }
+  /** 编辑用户消息：截断到该条之前，把内容回填输入框重发 */
+  editMessage(m) {
+    const idx = this.messages.indexOf(m);
+    if (idx < 0 || !this.inputEl) return;
+    this.messages = this.messages.slice(0, idx);
+    let t = this.displayText(m).replace(/^📌 基于选区：/, "");
+    this.inputEl.value = t;
+    this.renderMessages();
+    this.renderActions();
+    this.inputEl.focus();
   }
   async send() {
     var _a;
@@ -769,15 +882,19 @@ var SelectionPopover = class {
       return;
     }
     if (this.messages.length === 0) {
-      this.messages.push({
-        role: "user",
-        content: `\u4EE5\u4E0B\u662F\u9009\u4E2D\u7684\u6587\u672C\uFF1A
+      if (this.selected) {
+        this.messages.push({
+          role: "user",
+          content: `\u4EE5\u4E0B\u662F\u9009\u4E2D\u7684\u6587\u672C\uFF1A
 """
 ${this.selected}
 """
 
 \u8BF7\u57FA\u4E8E\u4E0A\u8FF0\u6587\u672C\u56DE\u7B54\u6211\u7684\u95EE\u9898\uFF1A${text}`
-      });
+        });
+      } else {
+        this.messages.push({ role: "user", content: text });
+      }
     } else {
       this.messages.push({ role: "user", content: text });
     }
@@ -831,7 +948,6 @@ ${this.selected}
       this.busy = false;
     }
   }
-  /** 模型限额 + 本次用量 */
   renderUsage(u) {
     if (!this.usageEl) return;
     this.usageEl.empty();
@@ -846,15 +962,80 @@ ${this.selected}
     const line1 = this.usageEl.createDiv({ cls: "ai-popover-usage-line" });
     line1.setText(`${model.name}${limits ? " \xB7 " + limits : ""}`);
     if (u) {
-      const line2 = this.usageEl.createDiv({
-        cls: "ai-popover-usage-line"
-      });
+      const line2 = this.usageEl.createDiv({ cls: "ai-popover-usage-line" });
       line2.setText(
         `\u672C\u6B21 \u63D0\u793A ${u.promptTokens} \xB7 \u8865\u5168 ${u.completionTokens} \xB7 \u603B\u8BA1 ${u.totalTokens}`
       );
     }
   }
 };
+/** 按笔记路径保存对话，跨悬浮窗实例恢复 */
+__publicField(_SelectionPopover, "savedByNote", /* @__PURE__ */ new Map());
+var SelectionPopover = _SelectionPopover;
+
+// src/slash.ts
+var Z_TOP2 = 2147483e3;
+function registerSlashCommand(plugin, openPopover) {
+  let menu = null;
+  let pending = null;
+  const close = () => {
+    menu == null ? void 0 : menu.remove();
+    menu = null;
+    pending = null;
+  };
+  const placeMenu = (editor, line, ch) => {
+    pending = { editor, line, ch };
+    if (menu) menu.remove();
+    menu = document.body.createDiv({ cls: "ai-slash-menu" });
+    menu.style.zIndex = String(Z_TOP2);
+    const item = menu.createDiv({ cls: "ai-slash-item" });
+    item.createSpan({ text: "\u2726 Margin \u60AC\u6D6E\u5BF9\u8BDD" });
+    item.addEventListener("click", () => {
+      const p = pending;
+      close();
+      if (!p) return;
+      p.editor.replaceRange(
+        "",
+        { line: p.line, ch: p.ch - 2 },
+        { line: p.line, ch: p.ch }
+      );
+      openPopover(p.editor, p.editor.getSelection());
+    });
+    const sel = window.getSelection();
+    let left = 120;
+    let top = 120;
+    if (sel && sel.rangeCount > 0) {
+      const r = sel.getRangeAt(0).getBoundingClientRect();
+      if (r && (r.width > 0 || r.height > 0)) {
+        left = Math.max(8, r.left);
+        top = Math.max(8, r.bottom + 6);
+      }
+    }
+    menu.style.left = left + "px";
+    menu.style.top = top + "px";
+  };
+  plugin.registerEvent(
+    plugin.app.workspace.on("editor-change", (editor) => {
+      const cursor = editor.getCursor();
+      if (cursor.ch < 2) {
+        if (menu) close();
+        return;
+      }
+      const lineText = editor.getLine(cursor.line).slice(0, cursor.ch);
+      if (lineText.endsWith("/p")) {
+        placeMenu(editor, cursor.line, cursor.ch);
+      } else if (menu) {
+        close();
+      }
+    })
+  );
+  plugin.registerDomEvent(document, "keydown", (e) => {
+    if (e.key === "Escape") close();
+  });
+  plugin.registerDomEvent(document, "mousedown", (e) => {
+    if (menu && !menu.contains(e.target)) close();
+  });
+}
 
 // src/main.ts
 var AIPlugin = class extends import_obsidian4.Plugin {
@@ -889,6 +1070,9 @@ var AIPlugin = class extends import_obsidian4.Plugin {
       )
     );
     this.addSettingTab(new AISettingsTab(this.app, this));
+    registerSlashCommand(this, (editor, selected) => {
+      new SelectionPopover(this, editor, selected).open();
+    });
     this.registerEvent(
       this.app.workspace.on("margin:settings-changed", () => {
         const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_CHAT)[0];

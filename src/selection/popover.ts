@@ -4,25 +4,32 @@ import { ChatMessage, UsageInfo } from "../llm/types";
 import { getProvider } from "../llm";
 import { modelLimitsText } from "../settings";
 
-/** 置顶层级：保证悬浮窗盖在 Obsidian 其它元素之上 */
+/** 置顶层级 */
 const Z_TOP = 2147483000;
 
+interface SavedConv {
+  messages: ChatMessage[];
+  lastResult: string;
+}
+
 /**
- * 划词悬浮对话。交互参照 Copilot：
- * 选中文字 → 右键唯一菜单「Margin」→ 弹出悬浮框，
- * 基于选区提问，结果可插入光标 / 覆盖选区。
- * - 每条消息自带复制图标（hover 显示）
- * - 可拖动头部
- * - 点击页面其它位置不会关闭，只能点 ✕
- * - 始终置顶
+ * 划词 / `/p` 悬浮对话。交互参照 Copilot：
+ * - 基于选区提问；结果可插入光标 / 覆盖选区
+ * - 每条消息自带复制图标，用户消息可编辑重发
+ * - 对话按笔记记忆：同一笔记再次打开悬浮窗，继续上次的对话
+ * - 可拖动头部；点外部不关闭（防丢失）；始终置顶
  */
 export class SelectionPopover {
+  /** 按笔记路径保存对话，跨悬浮窗实例恢复 */
+  private static savedByNote = new Map<string, SavedConv>();
+
   private plugin: AIPlugin;
   private editor: Editor;
   private selected: string;
   private messages: ChatMessage[] = [];
   private from: { line: number; ch: number };
   private to: { line: number; ch: number };
+  private noteKey = "";
   private root?: HTMLElement;
   private messagesEl?: HTMLElement;
   private inputEl?: HTMLTextAreaElement;
@@ -40,16 +47,35 @@ export class SelectionPopover {
   }
 
   open(): void {
+    this.noteKey = this.plugin.app.workspace.getActiveFile()?.path ?? "";
+
+    // 恢复该笔记上次的对话（若有）
+    const saved = SelectionPopover.savedByNote.get(this.noteKey);
+    if (saved) {
+      this.messages = [...saved.messages];
+      this.lastResult = saved.lastResult;
+    }
+
     const root = document.createElement("div");
     root.className = "ai-popover";
     root.style.zIndex = String(Z_TOP);
     root.addEventListener("click", (e) => e.stopPropagation());
 
-    // 头部（可拖动）
+    // 头部：标题 + 重来 + 关闭（可拖动）
     const header = root.createDiv({ cls: "ai-popover-header" });
     const title = header.createSpan({ cls: "ai-popover-title", text: "Margin" });
     title.addClass("ai-popover-drag");
-    const close = header.createEl("button", {
+    const right = header.createDiv({ cls: "ai-popover-header-right" });
+    const resetBtn = right.createEl("button", {
+      cls: "ai-popover-reset",
+      text: "↺",
+      attr: { type: "button", title: "重来（清空本笔记对话）" },
+    });
+    resetBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.reset();
+    });
+    const close = right.createEl("button", {
       cls: "ai-popover-close",
       text: "✕",
       attr: { type: "button", title: "关闭" },
@@ -59,28 +85,31 @@ export class SelectionPopover {
       this.close();
     });
 
-    // 选区预览
-    const ctx = root.createDiv({ cls: "ai-popover-ctx" });
-    ctx.createSpan({ cls: "ai-popover-ctx-label", text: "选区" });
-    ctx.createSpan({
-      cls: "ai-popover-ctx-text",
-      text:
-        this.selected.slice(0, 120) + (this.selected.length > 120 ? "…" : ""),
-    });
+    // 选区预览（仅当有选区）
+    if (this.selected) {
+      const ctx = root.createDiv({ cls: "ai-popover-ctx" });
+      ctx.createSpan({ cls: "ai-popover-ctx-label", text: "选区" });
+      ctx.createSpan({
+        cls: "ai-popover-ctx-text",
+        text:
+          this.selected.slice(0, 120) +
+          (this.selected.length > 120 ? "…" : ""),
+      });
+    }
 
     // 消息 / 用量 / 操作区
     this.messagesEl = root.createDiv({ cls: "ai-popover-messages" });
     this.usageEl = root.createDiv({ cls: "ai-popover-usage" });
     this.actionsEl = root.createDiv({ cls: "ai-popover-actions" });
-    this.renderActions();
 
     // 输入区
     const inputWrap = root.createDiv({ cls: "ai-popover-input-wrap" });
     this.inputEl = inputWrap.createEl("textarea", {
       cls: "ai-popover-input",
-      placeholder: "基于选区提问，Enter 发送，Shift+Enter 换行",
+      placeholder: this.selected
+        ? "基于选区提问，Enter 发送，Shift+Enter 换行"
+        : "输入问题，Enter 发送，Shift+Enter 换行",
     });
-    // 不用 mod-cta，避免大紫按钮
     const send = inputWrap.createEl("button", {
       cls: "ai-popover-send",
       text: "发送",
@@ -95,6 +124,10 @@ export class SelectionPopover {
 
     document.body.appendChild(root);
     this.root = root;
+
+    this.renderMessages();
+    this.renderActions();
+    this.renderUsage(null);
     this.inputEl.focus();
 
     const rect = this.getSelectionRect();
@@ -113,7 +146,7 @@ export class SelectionPopover {
 
   private position(rect: DOMRect | null): void {
     if (!this.root) return;
-    const w = 380;
+    const w = 360;
     const h = 420;
     let x = rect ? rect.left : window.innerWidth / 2 - w / 2;
     let y = rect ? rect.bottom + 8 : window.innerHeight / 2 - h / 2;
@@ -132,7 +165,9 @@ export class SelectionPopover {
     let origY = 0;
 
     header.addEventListener("mousedown", (e) => {
-      if ((e.target as HTMLElement).closest(".ai-popover-close")) return;
+      if ((e.target as HTMLElement).closest(".ai-popover-close, .ai-popover-reset")) {
+        return;
+      }
       dragging = true;
       startX = e.clientX;
       startY = e.clientY;
@@ -156,12 +191,29 @@ export class SelectionPopover {
     });
   }
 
+  /** 关闭时把对话存回笔记维度 */
   close(): void {
+    if (this.noteKey && this.messages.length > 0) {
+      SelectionPopover.savedByNote.set(this.noteKey, {
+        messages: [...this.messages],
+        lastResult: this.lastResult,
+      });
+    }
     this.root?.remove();
     this.root = undefined;
   }
 
-  /** 仅保留「插入光标 / 覆盖选区」两个真操作；复制由每条消息自带图标完成。 */
+  /** 重来：清空本笔记对话与已存记录 */
+  private reset(): void {
+    this.messages = [];
+    this.lastResult = "";
+    SelectionPopover.savedByNote.delete(this.noteKey);
+    this.renderMessages();
+    this.renderActions();
+    this.renderUsage(null);
+    this.inputEl?.focus();
+  }
+
   private renderActions(): void {
     if (!this.actionsEl) return;
     this.actionsEl.empty();
@@ -202,7 +254,7 @@ export class SelectionPopover {
       });
       bubble.createDiv({ cls: "ai-popover-msg-content", text });
 
-      // 复制图标
+      // 复制图标（每条消息）
       const copyBtn = bubble.createEl("button", {
         cls: "ai-popover-msg-copy",
         text: "📋",
@@ -213,10 +265,24 @@ export class SelectionPopover {
         navigator.clipboard.writeText(text);
         new Notice("已复制");
       });
+
+      // 用户消息可编辑重发
+      if (m.role === "user") {
+        const editBtn = bubble.createEl("button", {
+          cls: "ai-popover-msg-edit",
+          text: "✏️",
+          attr: { type: "button", title: "编辑并重发" },
+        });
+        editBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.editMessage(m);
+        });
+      }
     }
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   }
 
+  /** 首条带选区上下文的消息，展示时只显示问题本身 */
   private displayText(m: ChatMessage): string {
     const marker = "请基于上述文本回答我的问题：";
     const i = m.content.indexOf(marker);
@@ -224,6 +290,18 @@ export class SelectionPopover {
       return "📌 基于选区：" + m.content.slice(i + marker.length);
     }
     return m.content;
+  }
+
+  /** 编辑用户消息：截断到该条之前，把内容回填输入框重发 */
+  private editMessage(m: ChatMessage): void {
+    const idx = this.messages.indexOf(m);
+    if (idx < 0 || !this.inputEl) return;
+    this.messages = this.messages.slice(0, idx);
+    let t = this.displayText(m).replace(/^📌 基于选区：/, "");
+    this.inputEl.value = t;
+    this.renderMessages();
+    this.renderActions();
+    this.inputEl.focus();
   }
 
   private async send(): Promise<void> {
@@ -239,10 +317,15 @@ export class SelectionPopover {
     }
 
     if (this.messages.length === 0) {
-      this.messages.push({
-        role: "user",
-        content: `以下是选中的文本：\n"""\n${this.selected}\n"""\n\n请基于上述文本回答我的问题：${text}`,
-      });
+      if (this.selected) {
+        // 首轮：把选区作为上下文带给模型（多轮后模型仍记得选的是什么）
+        this.messages.push({
+          role: "user",
+          content: `以下是选中的文本：\n"""\n${this.selected}\n"""\n\n请基于上述文本回答我的问题：${text}`,
+        });
+      } else {
+        this.messages.push({ role: "user", content: text });
+      }
     } else {
       this.messages.push({ role: "user", content: text });
     }
@@ -301,7 +384,6 @@ export class SelectionPopover {
     }
   }
 
-  /** 模型限额 + 本次用量 */
   private renderUsage(u: UsageInfo | null): void {
     if (!this.usageEl) return;
     this.usageEl.empty();
@@ -317,9 +399,7 @@ export class SelectionPopover {
     const line1 = this.usageEl.createDiv({ cls: "ai-popover-usage-line" });
     line1.setText(`${model.name}${limits ? " · " + limits : ""}`);
     if (u) {
-      const line2 = this.usageEl.createDiv({
-        cls: "ai-popover-usage-line",
-      });
+      const line2 = this.usageEl.createDiv({ cls: "ai-popover-usage-line" });
       line2.setText(
         `本次 提示 ${u.promptTokens} · 补全 ${u.completionTokens} · 总计 ${u.totalTokens}`
       );

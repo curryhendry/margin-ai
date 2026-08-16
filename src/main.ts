@@ -6,6 +6,7 @@ import {
 } from "./settings";
 import { ChatView, VIEW_TYPE_CHAT } from "./views/chatView";
 import { SelectionPopover } from "./selection/popover";
+import { registerSlashCommand } from "./slash";
 
 export default class AIPlugin extends Plugin {
   declare settings: AIPluginSettings;
@@ -50,6 +51,11 @@ export default class AIPlugin extends Plugin {
     );
 
     this.addSettingTab(new AISettingsTab(this.app, this));
+
+    // `/p` 斜杠命令 → 悬浮对话
+    registerSlashCommand(this, (editor, selected) => {
+      new SelectionPopover(this, editor, selected).open();
+    });
 
     // 设置变更后通知已打开的 chat 视图刷新模型列表
     this.registerEvent(
