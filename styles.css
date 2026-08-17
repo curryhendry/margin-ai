@@ -624,7 +624,8 @@
 .ai-msg-retry svg,
 .ai-popover-msg-retry svg,
 .ai-chat-clear svg,
-.ai-popover-btn svg {
+.ai-popover-btn svg,
+.ai-popover-close svg {
   width: 14px;
   height: 14px;
 }
@@ -679,4 +680,26 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 120px;
+}
+
+/* ---------- 图标按钮原生化：强制去掉 Obsidian button 默认边框/背景/阴影 ---------- */
+.ai-chat-clear,
+.ai-popover-close,
+.ai-popover-btn,
+.ai-msg-copy,
+.ai-msg-edit,
+.ai-popover-msg-copy,
+.ai-popover-msg-edit {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.ai-chat-clear:hover,
+.ai-popover-close:hover,
+.ai-popover-btn:hover,
+.ai-msg-copy:hover,
+.ai-msg-edit:hover,
+.ai-popover-msg-copy:hover,
+.ai-popover-msg-edit:hover {
+  background: var(--background-modifier-hover, rgba(127, 127, 127, 0.18)) !important;
 }

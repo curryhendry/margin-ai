@@ -963,9 +963,9 @@ var _SelectionPopover = class _SelectionPopover {
     const right = header.createDiv({ cls: "ai-popover-header-right" });
     const close = right.createEl("button", {
       cls: "ai-popover-close",
-      text: "\u2715",
       attr: { type: "button", title: "\u5173\u95ED" }
     });
+    (0, import_obsidian5.setIcon)(close, "x");
     close.addEventListener("click", (e) => {
       e.stopPropagation();
       this.close();

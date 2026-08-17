@@ -66,9 +66,9 @@ export class SelectionPopover {
     const right = header.createDiv({ cls: "ai-popover-header-right" });
     const close = right.createEl("button", {
       cls: "ai-popover-close",
-      text: "✕",
       attr: { type: "button", title: "关闭" },
     });
+    setIcon(close, "x");
     close.addEventListener("click", (e) => {
       e.stopPropagation();
       this.close();
