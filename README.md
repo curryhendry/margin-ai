@@ -1,6 +1,7 @@
 # Margin
 
 > Obsidian AI 插件：右侧对话 + 划词悬浮问答。基于选区提问，结果一键插入/覆盖；支持多模型、流式输出与用量统计。
+> 没有什么科技含量，单纯为极简使用AI
 
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/curryhendry/margin-ai?style=flat-square)](https://github.com/curryhendry/margin-ai/releases/latest)
 [![GitHub stars](https://img.shields.io/github/stars/curryhendry/margin-ai?style=flat-square)](https://github.com/curryhendry/margin-ai)
@@ -37,9 +38,6 @@
 1. 打开插件设置 → **添加模型**
 2. 模型名称填你想要的型号，例如 `gemini-3.5-flash`（与 Google AI Studio 显示一致）
 3. API Key 填你的 Gemini Key（[https://aistudio.google.com/api-keys](https://aistudio.google.com/api-keys)）
-4. 设为默认
-
-> 中国大陆用户：Gemini API 需要 Obsidian 走代理（全局 / TUN 模式）才能连通。
 
 ---
 
@@ -48,6 +46,9 @@
 1. **右侧对话**：点击侧边栏图标，或命令面板「打开 AI Chat」
 2. **划词问答**：选中文字 → 右键「Margin」→ 悬浮窗提问 → 插入光标 / 覆盖选区
 3. **关联笔记**：输入 `[[` 弹出笔记候选，选中即关联；标签可随时移除
+<img alt="设置" src="https://github.com/user-attachments/assets/1abbf5b7-3de0-4089-8d17-183ab50341ea" />
+
+<img alt="悬浮窗对话" src="https://github.com/user-attachments/assets/39ec5df2-e5b5-480c-b54f-bc150c2a4149" />
 
 ---
 
