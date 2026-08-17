@@ -29,9 +29,6 @@
 
 前往 [Releases](https://github.com/curryhendry/margin-ai/releases) 下载对应版本。
 
-**方式三：BRAT 安装**（开发期推荐）
-
-[BRAT](https://github.com/TfTHacker/obsidian42-brat) 添加仓库 `curryhendry/margin-ai`。
 
 ---
 
