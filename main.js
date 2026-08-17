@@ -576,6 +576,7 @@ var ChatView = class extends import_obsidian4.ItemView {
     this.render();
     this.noteKey = this.currentNote();
     this.loadNote();
+    this.autoAttachCurrentNote();
     this.fileOpenRef = this.app.workspace.on(
       "file-open",
       () => this.switchNote()
@@ -790,6 +791,12 @@ var ChatView = class extends import_obsidian4.ItemView {
       this.renderAttachedChips();
     }
   }
+  /** 打开 Chat 时把当前笔记自动加入关联标签（可见、可删） */
+  autoAttachCurrentNote() {
+    if (!this.noteKey || this.noteKey === "(\u65E0\u7B14\u8BB0)") return;
+    const f = this.app.vault.getAbstractFileByPath(this.noteKey);
+    if (f instanceof import_obsidian4.TFile) this.attachNote(f);
+  }
   /** 解析 [[名称]]：wikilink/路径优先，其次按 basename 精确/模糊匹配（兜底） */
   resolveNote(name) {
     const direct = this.app.metadataCache.getFirstLinkpathDest(name, "") || this.app.vault.getAbstractFileByPath(name);
@@ -954,15 +961,6 @@ var _SelectionPopover = class _SelectionPopover {
     const title = header.createSpan({ cls: "ai-popover-title", text: "Margin" });
     title.addClass("ai-popover-drag");
     const right = header.createDiv({ cls: "ai-popover-header-right" });
-    const newBtn = right.createEl("button", {
-      cls: "ai-popover-new",
-      attr: { type: "button", title: "\u65B0\u5BF9\u8BDD" }
-    });
-    (0, import_obsidian5.setIcon)(newBtn, "plus");
-    newBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      this.newConversation();
-    });
     const close = right.createEl("button", {
       cls: "ai-popover-close",
       text: "\u2715",
@@ -1044,7 +1042,7 @@ var _SelectionPopover = class _SelectionPopover {
     let origY = 0;
     const isBtn = (t) => {
       var _a;
-      return !!((_a = t == null ? void 0 : t.closest) == null ? void 0 : _a.call(t, ".ai-popover-close, .ai-popover-new"));
+      return !!((_a = t == null ? void 0 : t.closest) == null ? void 0 : _a.call(t, ".ai-popover-close"));
     };
     const begin = (cx, cy) => {
       var _a, _b, _c, _d;
@@ -1096,18 +1094,6 @@ var _SelectionPopover = class _SelectionPopover {
     if (_SelectionPopover.current === this) _SelectionPopover.current = void 0;
     (_a = this.root) == null ? void 0 : _a.remove();
     this.root = void 0;
-  }
-  /** 新对话：清空本次对话与关联标签 */
-  newConversation() {
-    var _a;
-    this.messages = [];
-    this.lastResult = "";
-    this.attachedNotes = [];
-    this.renderAttachedChips();
-    this.renderMessages();
-    this.renderActions();
-    this.renderUsage(null);
-    (_a = this.inputEl) == null ? void 0 : _a.focus();
   }
   renderActions() {
     if (!this.actionsEl) return;

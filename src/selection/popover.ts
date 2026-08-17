@@ -59,20 +59,11 @@ export class SelectionPopover {
     root.style.zIndex = String(Z_TOP);
     root.addEventListener("click", (e) => e.stopPropagation());
 
-    // 头部：标题 + 新对话 + 关闭（可拖动）
+    // 头部：标题 + 关闭（可拖动）
     const header = root.createDiv({ cls: "ai-popover-header" });
     const title = header.createSpan({ cls: "ai-popover-title", text: "Margin" });
     title.addClass("ai-popover-drag");
     const right = header.createDiv({ cls: "ai-popover-header-right" });
-    const newBtn = right.createEl("button", {
-      cls: "ai-popover-new",
-      attr: { type: "button", title: "新对话" },
-    });
-    setIcon(newBtn, "plus");
-    newBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      this.newConversation();
-    });
     const close = right.createEl("button", {
       cls: "ai-popover-close",
       text: "✕",
@@ -174,7 +165,7 @@ export class SelectionPopover {
     let origY = 0;
 
     const isBtn = (t: EventTarget | null): boolean =>
-      !!(t as HTMLElement)?.closest?.(".ai-popover-close, .ai-popover-new");
+      !!(t as HTMLElement)?.closest?.(".ai-popover-close");
 
     const begin = (cx: number, cy: number): void => {
       dragging = true;
@@ -229,18 +220,6 @@ export class SelectionPopover {
     if (SelectionPopover.current === this) SelectionPopover.current = undefined;
     this.root?.remove();
     this.root = undefined;
-  }
-
-  /** 新对话：清空本次对话与关联标签 */
-  private newConversation(): void {
-    this.messages = [];
-    this.lastResult = "";
-    this.attachedNotes = [];
-    this.renderAttachedChips();
-    this.renderMessages();
-    this.renderActions();
-    this.renderUsage(null);
-    this.inputEl?.focus();
   }
 
   private renderActions(): void {

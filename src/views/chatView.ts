@@ -54,6 +54,8 @@ export class ChatView extends ItemView {
     this.render();
     this.noteKey = this.currentNote();
     this.loadNote();
+    // 打开 Chat 时自动关联当前笔记（显示为输入框内可删标签）
+    this.autoAttachCurrentNote();
     this.fileOpenRef = this.app.workspace.on("file-open", () =>
       this.switchNote()
     );
@@ -295,6 +297,13 @@ export class ChatView extends ItemView {
       this.attachedNotes.push({ path: file.path, basename: file.basename });
       this.renderAttachedChips();
     }
+  }
+
+  /** 打开 Chat 时把当前笔记自动加入关联标签（可见、可删） */
+  private autoAttachCurrentNote(): void {
+    if (!this.noteKey || this.noteKey === "(无笔记)") return;
+    const f = this.app.vault.getAbstractFileByPath(this.noteKey);
+    if (f instanceof TFile) this.attachNote(f);
   }
 
   /** 解析 [[名称]]：wikilink/路径优先，其次按 basename 精确/模糊匹配（兜底） */
