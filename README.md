@@ -1,3 +1,5 @@
+中文 | [English](README_EN.md)
+
 # Margin
 
 > Obsidian AI 插件：右侧对话 + 划词悬浮问答。基于选区提问，结果一键插入/覆盖；支持多模型、流式输出与用量统计。

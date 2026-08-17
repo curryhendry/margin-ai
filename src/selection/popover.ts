@@ -5,6 +5,7 @@ import { getProvider } from "../llm";
 import { modelLimitsText, type AIModel } from "../settings";
 import { copyText } from "../util";
 import { NoteLinkSuggest } from "../linkSuggest";
+import { t, tf } from "../i18n";
 
 /** 置顶层级 */
 const Z_TOP = 2147483000;
@@ -66,7 +67,7 @@ export class SelectionPopover {
     const right = header.createDiv({ cls: "ai-popover-header-right" });
     const close = right.createEl("button", {
       cls: "ai-popover-close",
-      attr: { type: "button", title: "关闭" },
+      attr: { type: "button", title: t("common.close") },
     });
     setIcon(close, "x");
     close.addEventListener("click", (e) => {
@@ -77,7 +78,7 @@ export class SelectionPopover {
     // 选区预览（仅当有选区）
     if (this.selected) {
       const ctx = root.createDiv({ cls: "ai-popover-ctx" });
-      ctx.createSpan({ cls: "ai-popover-ctx-label", text: "选区" });
+      ctx.createSpan({ cls: "ai-popover-ctx-label", text: t("popover.selection") });
       ctx.createSpan({
         cls: "ai-popover-ctx-text",
         text:
@@ -100,12 +101,12 @@ export class SelectionPopover {
     this.inputEl = inputWrap.createEl("textarea", {
       cls: "ai-popover-input",
       placeholder: this.selected
-        ? "基于选区提问，Enter 发送，Shift+Enter 换行"
-        : "输入问题，Enter 发送，Shift+Enter 换行",
+        ? t("popover.placeholder_sel")
+        : t("popover.placeholder"),
     });
     const send = inputWrap.createEl("button", {
       cls: "ai-popover-send",
-      text: "发送",
+      text: t("common.send"),
     });
     send.addEventListener("click", () => this.send());
     this.inputEl.addEventListener("keydown", (e) => {
@@ -238,14 +239,14 @@ export class SelectionPopover {
       b.addEventListener("click", fn);
     };
 
-    mk("插入光标", "corner-down-left", () => {
+    mk(t("popover.insert"), "corner-down-left", () => {
       this.editor.replaceRange(this.lastResult, this.editor.getCursor());
-      new Notice("已插入到光标处");
+      new Notice(t("popover.inserted"));
     });
 
-    mk("覆盖选区", "refresh-cw", () => {
+    mk(t("popover.overwrite"), "refresh-cw", () => {
       this.editor.replaceRange(this.lastResult, this.from, this.to);
-      new Notice("已覆盖选区");
+      new Notice(t("popover.overwritten"));
     });
   }
 
@@ -259,14 +260,14 @@ export class SelectionPopover {
       });
       bubble.createDiv({
         cls: "ai-popover-msg-role",
-        text: m.role === "user" ? "你" : "AI",
+        text: m.role === "user" ? t("common.you") : "AI",
       });
       bubble.createDiv({ cls: "ai-popover-msg-content", text });
 
       // 复制图标（每条消息）
       const copyBtn = bubble.createEl("button", {
         cls: "ai-popover-msg-copy",
-        attr: { type: "button", title: "复制本条消息" },
+        attr: { type: "button", title: t("common.copy") },
       });
       setIcon(copyBtn, "copy");
       copyBtn.addEventListener("click", (e) => {
@@ -279,7 +280,7 @@ export class SelectionPopover {
         const editBtn = bubble.createEl("button", {
           cls: "ai-popover-msg-edit",
           text: "✏️",
-          attr: { type: "button", title: "编辑并重发" },
+          attr: { type: "button", title: t("common.edit_resend") },
         });
         editBtn.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -292,10 +293,10 @@ export class SelectionPopover {
 
   /** 首条带选区上下文的消息，展示时只显示问题本身 */
   private displayText(m: ChatMessage): string {
-    const marker = "请基于上述文本回答我的问题：";
+    const marker = t("popover.ask_marker");
     const i = m.content.indexOf(marker);
     if (m.role === "user" && i >= 0) {
-      return "📌 基于选区：" + m.content.slice(i + marker.length);
+      return "📌 " + t("popover.selection_label") + m.content.slice(i + marker.length);
     }
     return m.content;
   }
@@ -305,8 +306,10 @@ export class SelectionPopover {
     const idx = this.messages.indexOf(m);
     if (idx < 0 || !this.inputEl) return;
     this.messages = this.messages.slice(0, idx);
-    let t = this.displayText(m).replace(/^📌 基于选区：/, "");
-    this.inputEl.value = t;
+    const prefix = "📌 " + t("popover.selection_label");
+    let q = this.displayText(m);
+    if (q.startsWith(prefix)) q = q.slice(prefix.length);
+    this.inputEl.value = q;
     this.renderMessages();
     this.renderActions();
     this.inputEl.focus();
@@ -331,7 +334,7 @@ export class SelectionPopover {
       const rm = chip.createEl("button", {
         cls: "ai-chat-attach-remove",
         text: "×",
-        attr: { type: "button", title: "移除关联" },
+        attr: { type: "button", title: t("common.remove_attach") },
       });
       rm.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -353,7 +356,7 @@ export class SelectionPopover {
       if (!name) continue;
       const f = this.resolveNote(name);
       if (!f) {
-        new Notice(`未找到笔记：${name}`);
+        new Notice(tf("chat.note_not_found", { name }));
         continue;
       }
       if (!this.attachedNotes.some((x) => x.path === f.path)) {
@@ -404,7 +407,7 @@ export class SelectionPopover {
     if (!text || this.busy) return;
     const model = this.currentModel();
     if (!model) {
-      new Notice("请先在设置中添加模型");
+      new Notice(t("common.no_model"));
       return;
     }
     // 解析 [[笔记名]] → 加入输入框关联 chip（可删除）
@@ -415,7 +418,10 @@ export class SelectionPopover {
         // 首轮：把选区作为上下文带给模型（多轮后模型仍记得选的是什么）
         this.messages.push({
           role: "user",
-          content: `以下是选中的文本：\n"""\n${this.selected}\n"""\n\n请基于上述文本回答我的问题：${text}`,
+          content: tf("popover.ask_prompt", {
+            selection: this.selected,
+            question: text,
+          }),
         });
       } else {
         this.messages.push({ role: "user", content: text });
@@ -456,7 +462,7 @@ export class SelectionPopover {
     });
     const copyBtn = aiBubble.createEl("button", {
       cls: "ai-popover-msg-copy",
-      attr: { type: "button", title: "复制本条消息" },
+      attr: { type: "button", title: t("common.copy") },
     });
     setIcon(copyBtn, "copy");
     copyBtn.addEventListener("click", (e) => {
@@ -481,7 +487,7 @@ export class SelectionPopover {
           }
         }
         if (blocks.length > 0) {
-          noteCtx = `\n\n# 关联笔记\n${blocks.join("\n\n---\n\n")}`;
+          noteCtx = `\n\n# ${t("chat.attached_notes")}\n${blocks.join("\n\n---\n\n")}`;
         }
       }
       const sys = this.plugin.settings.systemInstruction;
@@ -506,11 +512,11 @@ export class SelectionPopover {
           onError: (e) => {
             console.error("[Margin:popover] chat error", e);
             roleEl.setText("AI");
-            new Notice("错误：" + e.message);
+            new Notice(t("common.error") + e.message);
             contentEl.setText("⚠️ " + e.message);
             const retryBtn = aiBubble.createEl("button", {
               cls: "ai-popover-msg-retry",
-              attr: { type: "button", title: "重新获取这一轮回答" },
+              attr: { type: "button", title: t("common.retry") },
             });
             setIcon(retryBtn, "rotate-ccw");
             retryBtn.addEventListener("click", async (ev) => {
@@ -537,7 +543,7 @@ export class SelectionPopover {
         (m) => m.id === this.plugin.settings.defaultModelId
       ) || this.plugin.settings.models[0];
     if (!model) {
-      this.usageEl.setText("未选模型");
+      this.usageEl.setText(t("common.no_model_selected"));
       return;
     }
     const limits = modelLimitsText(model);
@@ -546,7 +552,11 @@ export class SelectionPopover {
     if (u) {
       const line2 = this.usageEl.createDiv({ cls: "ai-popover-usage-line" });
       line2.setText(
-        `本次 提示 ${u.promptTokens} · 补全 ${u.completionTokens} · 总计 ${u.totalTokens}`
+        tf("popover.this_usage", {
+          prompt: u.promptTokens,
+          completion: u.completionTokens,
+          total: u.totalTokens,
+        })
       );
     }
   }

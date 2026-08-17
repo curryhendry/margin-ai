@@ -1,4 +1,5 @@
 import { Notice } from "obsidian";
+import { t } from "./i18n";
 
 declare function require(name: string): any;
 
@@ -16,7 +17,7 @@ export async function copyText(text: string): Promise<void> {
     };
     if (electron?.clipboard) {
       electron.clipboard.writeText(text);
-      new Notice("已复制");
+      new Notice(t("common.copied"));
       return;
     }
   } catch {
@@ -27,7 +28,7 @@ export async function copyText(text: string): Promise<void> {
   if (navigator.clipboard && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(text);
-      new Notice("已复制");
+      new Notice(t("common.copied"));
       return;
     } catch {
       // 继续走回退
@@ -46,9 +47,9 @@ export async function copyText(text: string): Promise<void> {
     ta.select();
     const ok = document.execCommand("copy");
     ta.remove();
-    if (ok) new Notice("已复制");
-    else new Notice("复制失败");
+    if (ok) new Notice(t("common.copied"));
+    else new Notice(t("common.copy_failed"));
   } catch {
-    new Notice("复制失败");
+    new Notice(t("common.copy_failed"));
   }
 }

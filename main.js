@@ -42,8 +42,8 @@ async function testGeminiModel(model) {
   try {
     const r = await fetch(url);
     if (!r.ok) {
-      const t = await r.text().catch(() => "");
-      return { ok: false, error: `HTTP ${r.status}: ${t.slice(0, 200)}` };
+      const t2 = await r.text().catch(() => "");
+      return { ok: false, error: `HTTP ${r.status}: ${t2.slice(0, 200)}` };
     }
     const j = await r.json();
     const meta = {};
@@ -143,11 +143,178 @@ var GeminiProvider = class {
   }
 };
 
+// src/i18n.ts
+var zh = {
+  // common
+  "common.send": "\u53D1\u9001",
+  "common.you": "\u4F60",
+  "common.copy": "\u590D\u5236\u672C\u6761\u6D88\u606F",
+  "common.edit_resend": "\u7F16\u8F91\u5E76\u91CD\u53D1",
+  "common.remove_attach": "\u79FB\u9664\u5173\u8054",
+  "common.retry": "\u91CD\u65B0\u83B7\u53D6\u8FD9\u4E00\u8F6E\u56DE\u7B54",
+  "common.close": "\u5173\u95ED",
+  "common.no_model": "\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0\u6A21\u578B",
+  "common.no_model_selected": "\u672A\u9009\u6A21\u578B",
+  "common.error": "\u9519\u8BEF\uFF1A",
+  "common.copied": "\u5DF2\u590D\u5236",
+  "common.copy_failed": "\u590D\u5236\u5931\u8D25",
+  // commands
+  "cmd.open_chat": "\u6253\u5F00 AI Chat",
+  "cmd.open_popover": "\u6253\u5F00 Margin \u60AC\u6D6E\u5BF9\u8BDD",
+  // chat
+  "chat.new": "\u65B0\u5BF9\u8BDD",
+  "chat.placeholder": "\u8F93\u5165\u6D88\u606F\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C",
+  "chat.note_not_found": "\u672A\u627E\u5230\u7B14\u8BB0\uFF1A{name}",
+  "chat.this_usage": "\u672C\u6B21 {prompt}+{completion}={total}",
+  "chat.session_usage": "\u4F1A\u8BDD\u7D2F\u8BA1 {prompt}+{completion}={total} tokens \xB7 {tail}",
+  "chat.attached_notes": "\u5173\u8054\u7B14\u8BB0",
+  // popover
+  "popover.no_note": "\u5F53\u524D\u6CA1\u6709\u6253\u5F00\u7684\u7B14\u8BB0",
+  "popover.selection": "\u9009\u533A",
+  "popover.placeholder_sel": "\u57FA\u4E8E\u9009\u533A\u63D0\u95EE\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C",
+  "popover.placeholder": "\u8F93\u5165\u95EE\u9898\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C",
+  "popover.insert": "\u63D2\u5165\u5149\u6807",
+  "popover.overwrite": "\u8986\u76D6\u9009\u533A",
+  "popover.inserted": "\u5DF2\u63D2\u5165\u5230\u5149\u6807\u5904",
+  "popover.overwritten": "\u5DF2\u8986\u76D6\u9009\u533A",
+  "popover.ask_marker": "\u8BF7\u57FA\u4E8E\u4E0A\u8FF0\u6587\u672C\u56DE\u7B54\u6211\u7684\u95EE\u9898\uFF1A",
+  "popover.selection_label": "\u57FA\u4E8E\u9009\u533A\uFF1A",
+  "popover.ask_prompt": '\u4EE5\u4E0B\u662F\u9009\u4E2D\u7684\u6587\u672C\uFF1A\n"""\n{selection}\n"""\n\n\u8BF7\u57FA\u4E8E\u4E0A\u8FF0\u6587\u672C\u56DE\u7B54\u6211\u7684\u95EE\u9898\uFF1A{question}',
+  "popover.this_usage": "\u672C\u6B21 \u63D0\u793A {prompt} \xB7 \u8865\u5168 {completion} \xB7 \u603B\u8BA1 {total}",
+  // settings
+  "settings.title": "Margin \u8BBE\u7F6E",
+  "settings.eye": "\u663E\u793A / \u9690\u85CF",
+  "settings.api_key": "API Key",
+  "settings.add_model": "\u6DFB\u52A0\u6A21\u578B",
+  "settings.add_hint": "\u6A21\u578B\u540D\u79F0\u586B\u4F60\u60F3\u8981\u7684\u578B\u53F7\uFF08\u5982 gemini-3.5-flash\uFF09\uFF0CAPI Key \u4ECE Google AI Studio \u83B7\u53D6\u3002\u53EF\u6DFB\u52A0\u591A\u4E2A\u5E76\u968F\u65F6\u5207\u6362\u3002",
+  "settings.model_name_placeholder": "\u6A21\u578B\u540D\u79F0\uFF0C\u5982 gemini-3.5-flash",
+  "settings.need_name_key": "\u8BF7\u586B\u5199\u6A21\u578B\u540D\u79F0\u548C API Key",
+  "settings.models": "\u5DF2\u6DFB\u52A0\u6A21\u578B",
+  "settings.empty": "\u8FD8\u6CA1\u6709\u6A21\u578B\uFF0C\u5148\u5728\u4E0A\u65B9\u6DFB\u52A0\u3002",
+  "settings.untested": "\u672A\u6D4B\u8BD5",
+  "settings.set_default": "\u8BBE\u4E3A\u9ED8\u8BA4",
+  "settings.is_default": "\u9ED8\u8BA4 \u2713",
+  "settings.test": "\u6D4B\u8BD5",
+  "settings.testing": "\u6D4B\u8BD5\u4E2D\u2026",
+  "settings.test_ok": "\u2713 {name} \u8FDE\u63A5\u6210\u529F \xB7 {limits}",
+  "settings.no_limits": "\u65E0\u9650\u989D\u4FE1\u606F",
+  "settings.test_fail_prefix": "\u2717 \u6D4B\u8BD5\u5931\u8D25\uFF1A",
+  "settings.unknown_error": "\u672A\u77E5\u9519\u8BEF",
+  "settings.edit": "\u4FEE\u6539",
+  "settings.delete": "\u5220\u9664",
+  "settings.model_name": "\u6A21\u578B\u540D\u79F0",
+  "settings.base_url_placeholder": "base URL\uFF08\u53EF\u9009\uFF0C\u4EE3\u7406 / \u7F51\u5173\u7528\uFF09",
+  "settings.save": "\u4FDD\u5B58",
+  "settings.cancel": "\u53D6\u6D88",
+  "settings.default_model": "\u9ED8\u8BA4\u6A21\u578B",
+  "settings.default_model_desc": "\u65B0\u5BF9\u8BDD / \u5212\u8BCD\u4F7F\u7528\u7684\u9ED8\u8BA4\u6A21\u578B",
+  "settings.system_instruction": "\u7CFB\u7EDF\u6307\u4EE4\uFF08\u53EF\u9009\uFF09",
+  "settings.system_instruction_desc": "\u8FFD\u52A0\u7ED9\u6A21\u578B\u7684\u5168\u5C40\u8BBE\u5B9A\uFF0C\u4F8B\u5982\u201C\u7528\u7B80\u6D01\u4E2D\u6587\u56DE\u7B54\u201D",
+  "settings.limit_context": "\u4E0A\u4E0B\u6587 {n}",
+  "settings.limit_output": "\u8F93\u51FA {n}",
+  "settings.language": "\u754C\u9762\u8BED\u8A00",
+  "settings.lang_auto": "\u81EA\u52A8\uFF08\u8DDF\u968F Obsidian\uFF09",
+  "settings.lang_zh": "\u4E2D\u6587",
+  "settings.lang_en": "English"
+};
+var en = {
+  "common.send": "Send",
+  "common.you": "You",
+  "common.copy": "Copy message",
+  "common.edit_resend": "Edit & resend",
+  "common.remove_attach": "Remove",
+  "common.retry": "Retry this turn",
+  "common.close": "Close",
+  "common.no_model": "Please add a model in settings first",
+  "common.no_model_selected": "No model",
+  "common.error": "Error: ",
+  "common.copied": "Copied",
+  "common.copy_failed": "Copy failed",
+  "cmd.open_chat": "Open AI Chat",
+  "cmd.open_popover": "Open Margin Popover",
+  "chat.new": "New chat",
+  "chat.placeholder": "Type a message, Enter to send, Shift+Enter for newline",
+  "chat.note_not_found": "Note not found: {name}",
+  "chat.this_usage": "This: {prompt}+{completion}={total}",
+  "chat.session_usage": "Session {prompt}+{completion}={total} tokens \xB7 {tail}",
+  "chat.attached_notes": "Attached notes",
+  "popover.no_note": "No note is open",
+  "popover.selection": "Selection",
+  "popover.placeholder_sel": "Ask about the selection, Enter to send",
+  "popover.placeholder": "Type a question, Enter to send",
+  "popover.insert": "Insert at cursor",
+  "popover.overwrite": "Overwrite selection",
+  "popover.inserted": "Inserted at cursor",
+  "popover.overwritten": "Selection overwritten",
+  "popover.ask_marker": "Please answer my question based on the text above:",
+  "popover.selection_label": "Based on selection: ",
+  "popover.ask_prompt": 'Here is the selected text:\n"""\n{selection}\n"""\n\nPlease answer my question based on the text above: {question}',
+  "popover.this_usage": "This: prompt {prompt} \xB7 completion {completion} \xB7 total {total}",
+  "settings.title": "Margin Settings",
+  "settings.eye": "Show / Hide",
+  "settings.api_key": "API Key",
+  "settings.add_model": "Add model",
+  "settings.add_hint": "Enter the model name (e.g. gemini-3.5-flash) and an API key from Google AI Studio. You can add multiple models and switch anytime.",
+  "settings.model_name_placeholder": "Model name, e.g. gemini-3.5-flash",
+  "settings.need_name_key": "Please fill in model name and API key",
+  "settings.models": "Added models",
+  "settings.empty": "No models yet. Add one above.",
+  "settings.untested": "Not tested",
+  "settings.set_default": "Set default",
+  "settings.is_default": "Default \u2713",
+  "settings.test": "Test",
+  "settings.testing": "Testing\u2026",
+  "settings.test_ok": "\u2713 {name} connected \xB7 {limits}",
+  "settings.no_limits": "No limit info",
+  "settings.test_fail_prefix": "\u2717 Test failed: ",
+  "settings.unknown_error": "Unknown error",
+  "settings.edit": "Edit",
+  "settings.delete": "Delete",
+  "settings.model_name": "Model name",
+  "settings.base_url_placeholder": "base URL (optional, for proxy/gateway)",
+  "settings.save": "Save",
+  "settings.cancel": "Cancel",
+  "settings.default_model": "Default model",
+  "settings.default_model_desc": "The model used for new chats and the selection popover",
+  "settings.system_instruction": "System instruction (optional)",
+  "settings.system_instruction_desc": 'Global instructions appended to the model, e.g. "answer in concise Chinese"',
+  "settings.limit_context": "Context {n}",
+  "settings.limit_output": "Output {n}",
+  "settings.language": "Language",
+  "settings.lang_auto": "Auto (follow Obsidian)",
+  "settings.lang_zh": "\u4E2D\u6587",
+  "settings.lang_en": "English"
+};
+var lang = "zh";
+function detectObsidianLang() {
+  try {
+    const l = (window.localStorage.getItem("language") || "").toLowerCase();
+    if (l.startsWith("zh")) return "zh";
+  } catch (e) {
+  }
+  return "en";
+}
+function setLang(l) {
+  lang = l;
+}
+function t(key) {
+  var _a;
+  return (_a = lang === "zh" ? zh[key] : en[key]) != null ? _a : key;
+}
+function tf(key, params) {
+  let s = t(key);
+  for (const [k, v] of Object.entries(params)) {
+    s = s.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
+  }
+  return s;
+}
+
 // src/settings.ts
 var DEFAULT_SETTINGS = {
   models: [],
   defaultModelId: "",
-  systemInstruction: ""
+  systemInstruction: "",
+  language: "auto"
 };
 function fmtLimit(n) {
   if (n == null) return "\u2014";
@@ -156,8 +323,8 @@ function fmtLimit(n) {
   return String(n);
 }
 function modelLimitsText(m) {
-  const inL = m.inputTokenLimit != null ? `\u4E0A\u4E0B\u6587 ${fmtLimit(m.inputTokenLimit)}` : null;
-  const outL = m.outputTokenLimit != null ? `\u8F93\u51FA ${fmtLimit(m.outputTokenLimit)}` : null;
+  const inL = m.inputTokenLimit != null ? tf("settings.limit_context", { n: fmtLimit(m.inputTokenLimit) }) : null;
+  const outL = m.outputTokenLimit != null ? tf("settings.limit_output", { n: fmtLimit(m.outputTokenLimit) }) : null;
   const parts = [inL, outL].filter(Boolean);
   return parts.join(" \xB7 ");
 }
@@ -165,14 +332,14 @@ function createKeyInput(container, value = "") {
   const wrap = container.createDiv({ cls: "ai-set-key-wrap" });
   const input = wrap.createEl("input", {
     cls: "ai-set-input ai-set-key-input",
-    placeholder: "API Key",
+    placeholder: t("settings.api_key"),
     type: "password",
     value
   });
   const eye = wrap.createEl("button", {
     cls: "ai-set-eye",
     text: "\u{1F441}",
-    attr: { type: "button", title: "\u663E\u793A / \u9690\u85CF" }
+    attr: { type: "button", title: t("settings.eye") }
   });
   eye.addEventListener("click", () => {
     const show = input.type === "password";
@@ -191,34 +358,51 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("ai-set");
-    containerEl.createEl("h2", { text: "Margin \u8BBE\u7F6E" });
+    containerEl.createEl("h2", { text: t("settings.title") });
+    this.renderLanguage(containerEl);
     this.renderAddModel(containerEl);
     this.renderModelList(containerEl);
     this.renderGeneral(containerEl);
   }
+  /** 界面语言 */
+  renderLanguage(containerEl) {
+    const card = containerEl.createDiv({ cls: "ai-set-card" });
+    new import_obsidian.Setting(card).setName(t("settings.language")).addDropdown((d) => {
+      d.addOption("auto", t("settings.lang_auto"));
+      d.addOption("zh", t("settings.lang_zh"));
+      d.addOption("en", t("settings.lang_en"));
+      d.setValue(this.plugin.settings.language);
+      d.onChange(async (v) => {
+        this.plugin.settings.language = v;
+        setLang(v === "auto" ? detectObsidianLang() : v);
+        await this.plugin.saveSettings();
+        this.display();
+      });
+    });
+  }
   /** 添加模型 */
   renderAddModel(containerEl) {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
-    card.createEl("h3", { text: "\u6DFB\u52A0\u6A21\u578B" });
+    card.createEl("h3", { text: t("settings.add_model") });
     card.createEl("p", {
       cls: "ai-set-hint",
-      text: "\u6A21\u578B\u540D\u79F0\u586B\u4F60\u60F3\u8981\u7684\u578B\u53F7\uFF08\u5982 gemini-3.5-flash\uFF09\uFF0CAPI Key \u4ECE Google AI Studio \u83B7\u53D6\u3002\u53EF\u6DFB\u52A0\u591A\u4E2A\u5E76\u968F\u65F6\u5207\u6362\u3002"
+      text: t("settings.add_hint")
     });
     const addWrap = card.createDiv({ cls: "ai-set-add" });
     const nameInput = addWrap.createEl("input", {
       cls: "ai-set-input",
-      placeholder: "\u6A21\u578B\u540D\u79F0\uFF0C\u5982 gemini-3.5-flash"
+      placeholder: t("settings.model_name_placeholder")
     });
     const keyInput = createKeyInput(addWrap);
     const addBtn = addWrap.createEl("button", {
       cls: "ai-set-add-btn mod-cta",
-      text: "\u6DFB\u52A0\u6A21\u578B"
+      text: t("settings.add_model")
     });
     addBtn.addEventListener("click", async () => {
       const name = nameInput.value.trim();
       const key = keyInput.value.trim();
       if (!name || !key) {
-        new import_obsidian.Notice("\u8BF7\u586B\u5199\u6A21\u578B\u540D\u79F0\u548C API Key");
+        new import_obsidian.Notice(t("settings.need_name_key"));
         return;
       }
       const model = {
@@ -238,11 +422,11 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
   /** 模型列表 */
   renderModelList(containerEl) {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
-    card.createEl("h3", { text: "\u5DF2\u6DFB\u52A0\u6A21\u578B" });
+    card.createEl("h3", { text: t("settings.models") });
     if (this.plugin.settings.models.length === 0) {
       card.createEl("p", {
         cls: "ai-set-empty",
-        text: "\u8FD8\u6CA1\u6709\u6A21\u578B\uFF0C\u5148\u5728\u4E0A\u65B9\u6DFB\u52A0\u3002"
+        text: t("settings.empty")
       });
       return;
     }
@@ -255,12 +439,12 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
         cls: "ai-set-model-limits",
         text: modelLimitsText(m)
       });
-      if (!limitsSpan.getText()) limitsSpan.setText("\u672A\u6D4B\u8BD5");
+      if (!limitsSpan.getText()) limitsSpan.setText(t("settings.untested"));
       const actions = row.createDiv({ cls: "ai-set-model-actions" });
       const isDefault = this.plugin.settings.defaultModelId === m.id;
       const def = actions.createEl("button", {
         cls: "ai-set-model-btn" + (isDefault ? " is-default" : ""),
-        text: isDefault ? "\u9ED8\u8BA4 \u2713" : "\u8BBE\u4E3A\u9ED8\u8BA4"
+        text: isDefault ? t("settings.is_default") : t("settings.set_default")
       });
       def.addEventListener("click", async () => {
         this.plugin.settings.defaultModelId = m.id;
@@ -269,32 +453,37 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
       });
       const testBtn = actions.createEl("button", {
         cls: "ai-set-model-btn",
-        text: "\u6D4B\u8BD5"
+        text: t("settings.test")
       });
       testBtn.addEventListener("click", async () => {
-        testBtn.setText("\u6D4B\u8BD5\u4E2D\u2026");
+        testBtn.setText(t("settings.testing"));
         const r = await testGeminiModel(m);
         if (r.ok && r.meta) {
           m.inputTokenLimit = r.meta.inputTokenLimit;
           m.outputTokenLimit = r.meta.outputTokenLimit;
           await this.plugin.saveSettings();
           new import_obsidian.Notice(
-            `\u2713 ${m.name} \u8FDE\u63A5\u6210\u529F \xB7 ${modelLimitsText(m) || "\u65E0\u9650\u989D\u4FE1\u606F"}`
+            tf("settings.test_ok", {
+              name: m.name,
+              limits: modelLimitsText(m) || t("settings.no_limits")
+            })
           );
           this.display();
         } else {
-          new import_obsidian.Notice("\u2717 \u6D4B\u8BD5\u5931\u8D25\uFF1A" + (r.error || "\u672A\u77E5\u9519\u8BEF"));
-          testBtn.setText("\u6D4B\u8BD5");
+          new import_obsidian.Notice(
+            t("settings.test_fail_prefix") + (r.error || t("settings.unknown_error"))
+          );
+          testBtn.setText(t("settings.test"));
         }
       });
       const edit = actions.createEl("button", {
         cls: "ai-set-model-btn",
-        text: "\u4FEE\u6539"
+        text: t("settings.edit")
       });
       edit.addEventListener("click", () => this.renderEditForm(row, m));
       const del = actions.createEl("button", {
         cls: "ai-set-model-btn ai-set-model-del",
-        text: "\u5220\u9664"
+        text: t("settings.delete")
       });
       del.addEventListener("click", async () => {
         var _a, _b;
@@ -317,18 +506,18 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
     const nameInput = row.createEl("input", {
       cls: "ai-set-input",
       value: m.name,
-      placeholder: "\u6A21\u578B\u540D\u79F0"
+      placeholder: t("settings.model_name")
     });
     const keyInput = createKeyInput(row, m.apiKey);
     const urlInput = row.createEl("input", {
       cls: "ai-set-input",
       value: (_a = m.baseUrl) != null ? _a : "",
-      placeholder: "base URL\uFF08\u53EF\u9009\uFF0C\u4EE3\u7406 / \u7F51\u5173\u7528\uFF09"
+      placeholder: t("settings.base_url_placeholder")
     });
     const btnWrap = row.createDiv({ cls: "ai-set-model-actions" });
     const save = btnWrap.createEl("button", {
       cls: "ai-set-model-btn mod-cta",
-      text: "\u4FDD\u5B58"
+      text: t("settings.save")
     });
     save.addEventListener("click", async () => {
       m.name = nameInput.value.trim() || m.name;
@@ -339,14 +528,14 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
     });
     const cancel = btnWrap.createEl("button", {
       cls: "ai-set-model-btn",
-      text: "\u53D6\u6D88"
+      text: t("settings.cancel")
     });
     cancel.addEventListener("click", () => this.display());
   }
   /** 默认模型下拉 + 系统指令 */
   renderGeneral(containerEl) {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
-    new import_obsidian.Setting(card).setName("\u9ED8\u8BA4\u6A21\u578B").setDesc("\u65B0\u5BF9\u8BDD / \u5212\u8BCD\u4F7F\u7528\u7684\u9ED8\u8BA4\u6A21\u578B").addDropdown((d) => {
+    new import_obsidian.Setting(card).setName(t("settings.default_model")).setDesc(t("settings.default_model_desc")).addDropdown((d) => {
       this.plugin.settings.models.forEach((m) => d.addOption(m.id, m.name));
       d.setValue(this.plugin.settings.defaultModelId);
       d.onChange(async (v) => {
@@ -354,9 +543,9 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian.Setting(card).setName("\u7CFB\u7EDF\u6307\u4EE4\uFF08\u53EF\u9009\uFF09").setDesc("\u8FFD\u52A0\u7ED9\u6A21\u578B\u7684\u5168\u5C40\u8BBE\u5B9A\uFF0C\u4F8B\u5982\u201C\u7528\u7B80\u6D01\u4E2D\u6587\u56DE\u7B54\u201D").addTextArea((t) => {
-      t.setValue(this.plugin.settings.systemInstruction);
-      t.onChange(async (v) => {
+    new import_obsidian.Setting(card).setName(t("settings.system_instruction")).setDesc(t("settings.system_instruction_desc")).addTextArea((ta) => {
+      ta.setValue(this.plugin.settings.systemInstruction);
+      ta.onChange(async (v) => {
         this.plugin.settings.systemInstruction = v;
         await this.plugin.saveSettings();
       });
@@ -384,7 +573,7 @@ async function copyText(text) {
     const electron = require("electron");
     if (electron == null ? void 0 : electron.clipboard) {
       electron.clipboard.writeText(text);
-      new import_obsidian2.Notice("\u5DF2\u590D\u5236");
+      new import_obsidian2.Notice(t("common.copied"));
       return;
     }
   } catch (e) {
@@ -392,7 +581,7 @@ async function copyText(text) {
   if (navigator.clipboard && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(text);
-      new import_obsidian2.Notice("\u5DF2\u590D\u5236");
+      new import_obsidian2.Notice(t("common.copied"));
       return;
     } catch (e) {
     }
@@ -408,10 +597,10 @@ async function copyText(text) {
     ta.select();
     const ok = document.execCommand("copy");
     ta.remove();
-    if (ok) new import_obsidian2.Notice("\u5DF2\u590D\u5236");
-    else new import_obsidian2.Notice("\u590D\u5236\u5931\u8D25");
+    if (ok) new import_obsidian2.Notice(t("common.copied"));
+    else new import_obsidian2.Notice(t("common.copy_failed"));
   } catch (e) {
-    new import_obsidian2.Notice("\u590D\u5236\u5931\u8D25");
+    new import_obsidian2.Notice(t("common.copy_failed"));
   }
 }
 
@@ -613,7 +802,7 @@ var ChatView = class extends import_obsidian4.ItemView {
       const rm = chip.createEl("button", {
         cls: "ai-chat-attach-remove",
         text: "\xD7",
-        attr: { type: "button", title: "\u79FB\u9664\u5173\u8054" }
+        attr: { type: "button", title: t("common.remove_attach") }
       });
       rm.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -661,7 +850,7 @@ var ChatView = class extends import_obsidian4.ItemView {
     this.modelSelect.addEventListener("change", () => this.showUsage(null));
     const newBtn = header.createEl("button", {
       cls: "ai-chat-clear",
-      attr: { type: "button", title: "\u65B0\u5BF9\u8BDD" }
+      attr: { type: "button", title: t("chat.new") }
     });
     (0, import_obsidian4.setIcon)(newBtn, "plus");
     newBtn.addEventListener("click", () => {
@@ -682,11 +871,11 @@ var ChatView = class extends import_obsidian4.ItemView {
     const inputWrap = root.createDiv({ cls: "ai-chat-input-wrap" });
     this.inputEl = inputWrap.createEl("textarea", {
       cls: "ai-chat-input",
-      placeholder: "\u8F93\u5165\u6D88\u606F\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C"
+      placeholder: t("chat.placeholder")
     });
     const sendBtn = inputWrap.createEl("button", {
       cls: "ai-chat-send",
-      text: "\u53D1\u9001"
+      text: t("common.send")
     });
     sendBtn.addEventListener("click", () => this.send());
     this.inputEl.addEventListener("keydown", (e) => {
@@ -710,12 +899,12 @@ var ChatView = class extends import_obsidian4.ItemView {
       });
       bubble.createEl("div", {
         cls: "ai-msg-role",
-        text: m.role === "user" ? "\u4F60" : "AI"
+        text: m.role === "user" ? t("common.you") : "AI"
       });
       bubble.createEl("div", { cls: "ai-msg-content", text: m.content });
       const copyBtn = bubble.createEl("button", {
         cls: "ai-msg-copy",
-        attr: { type: "button", title: "\u590D\u5236\u672C\u6761\u6D88\u606F" }
+        attr: { type: "button", title: t("common.copy") }
       });
       (0, import_obsidian4.setIcon)(copyBtn, "copy");
       copyBtn.addEventListener("click", (e) => {
@@ -726,7 +915,7 @@ var ChatView = class extends import_obsidian4.ItemView {
         const editBtn = bubble.createEl("button", {
           cls: "ai-msg-edit",
           text: "\u270F\uFE0F",
-          attr: { type: "button", title: "\u7F16\u8F91\u5E76\u91CD\u53D1" }
+          attr: { type: "button", title: t("common.edit_resend") }
         });
         editBtn.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -745,7 +934,7 @@ var ChatView = class extends import_obsidian4.ItemView {
     if (!text || this.busy) return;
     const model = this.currentModel();
     if (!model) {
-      new import_obsidian4.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0\u6A21\u578B");
+      new import_obsidian4.Notice(t("common.no_model"));
       return;
     }
     this.attachRefsFromText(text);
@@ -764,7 +953,7 @@ var ChatView = class extends import_obsidian4.ItemView {
       if (!name) continue;
       const f = this.resolveNote(name);
       if (!f) {
-        new import_obsidian4.Notice(`\u672A\u627E\u5230\u7B14\u8BB0\uFF1A${name}`);
+        new import_obsidian4.Notice(tf("chat.note_not_found", { name }));
         continue;
       }
       if (!this.attachedNotes.some((x) => x.path === f.path)) {
@@ -826,7 +1015,7 @@ var ChatView = class extends import_obsidian4.ItemView {
     });
     const copyBtn = aiBubble.createEl("button", {
       cls: "ai-msg-copy",
-      attr: { type: "button", title: "\u590D\u5236\u672C\u6761\u6D88\u606F" }
+      attr: { type: "button", title: t("common.copy") }
     });
     (0, import_obsidian4.setIcon)(copyBtn, "copy");
     copyBtn.addEventListener("click", (e) => {
@@ -854,7 +1043,7 @@ ${content}`);
         if (blocks.length > 0) {
           noteCtx += `
 
-# \u5173\u8054\u7B14\u8BB0
+# ${t("chat.attached_notes")}
 ${blocks.join("\n\n---\n\n")}`;
         }
       }
@@ -863,8 +1052,8 @@ ${blocks.join("\n\n---\n\n")}`;
         model,
         this.messages,
         {
-          onToken: (t) => {
-            acc += t;
+          onToken: (t2) => {
+            acc += t2;
             contentEl.setText(acc);
             this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
           },
@@ -881,11 +1070,11 @@ ${blocks.join("\n\n---\n\n")}`;
           onError: (e) => {
             console.error("[Margin:chat] chat error", e);
             roleEl.setText("AI");
-            new import_obsidian4.Notice("\u9519\u8BEF\uFF1A" + e.message);
+            new import_obsidian4.Notice(t("common.error") + e.message);
             contentEl.setText("\u26A0\uFE0F " + e.message);
             const retryBtn = aiBubble.createEl("button", {
               cls: "ai-msg-retry",
-              attr: { type: "button", title: "\u91CD\u65B0\u83B7\u53D6\u8FD9\u4E00\u8F6E\u56DE\u7B54" }
+              attr: { type: "button", title: t("common.retry") }
             });
             (0, import_obsidian4.setIcon)(retryBtn, "rotate-ccw");
             retryBtn.addEventListener("click", async (ev) => {
@@ -910,12 +1099,23 @@ ${blocks.join("\n\n---\n\n")}`;
     const m = this.currentModel();
     const limits = m ? modelLimitsText(m) : "";
     const row1 = this.usageEl.createDiv({ cls: "ai-chat-usage-line" });
-    row1.setText(`${(_a = m == null ? void 0 : m.name) != null ? _a : "\u672A\u9009\u6A21\u578B"}${limits ? " \xB7 " + limits : ""}`);
+    row1.setText(
+      `${(_a = m == null ? void 0 : m.name) != null ? _a : t("common.no_model_selected")}${limits ? " \xB7 " + limits : ""}`
+    );
     const row2 = this.usageEl.createDiv({ cls: "ai-chat-usage-line" });
     const s = this.sessionUsage;
-    const tail = u ? `\u672C\u6B21 ${u.promptTokens}+${u.completionTokens}=${u.totalTokens}` : "\u2014";
+    const tail = u ? tf("chat.this_usage", {
+      prompt: u.promptTokens,
+      completion: u.completionTokens,
+      total: u.totalTokens
+    }) : "\u2014";
     row2.setText(
-      `\u4F1A\u8BDD\u7D2F\u8BA1 ${s.prompt}+${s.completion}=${s.total} tokens \xB7 ${tail}`
+      tf("chat.session_usage", {
+        prompt: s.prompt,
+        completion: s.completion,
+        total: s.total,
+        tail
+      })
     );
   }
 };
@@ -963,7 +1163,7 @@ var _SelectionPopover = class _SelectionPopover {
     const right = header.createDiv({ cls: "ai-popover-header-right" });
     const close = right.createEl("button", {
       cls: "ai-popover-close",
-      attr: { type: "button", title: "\u5173\u95ED" }
+      attr: { type: "button", title: t("common.close") }
     });
     (0, import_obsidian5.setIcon)(close, "x");
     close.addEventListener("click", (e) => {
@@ -972,7 +1172,7 @@ var _SelectionPopover = class _SelectionPopover {
     });
     if (this.selected) {
       const ctx = root.createDiv({ cls: "ai-popover-ctx" });
-      ctx.createSpan({ cls: "ai-popover-ctx-label", text: "\u9009\u533A" });
+      ctx.createSpan({ cls: "ai-popover-ctx-label", text: t("popover.selection") });
       ctx.createSpan({
         cls: "ai-popover-ctx-text",
         text: this.selected.slice(0, 120) + (this.selected.length > 120 ? "\u2026" : "")
@@ -986,11 +1186,11 @@ var _SelectionPopover = class _SelectionPopover {
     const inputWrap = root.createDiv({ cls: "ai-popover-input-wrap" });
     this.inputEl = inputWrap.createEl("textarea", {
       cls: "ai-popover-input",
-      placeholder: this.selected ? "\u57FA\u4E8E\u9009\u533A\u63D0\u95EE\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C" : "\u8F93\u5165\u95EE\u9898\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C"
+      placeholder: this.selected ? t("popover.placeholder_sel") : t("popover.placeholder")
     });
     const send = inputWrap.createEl("button", {
       cls: "ai-popover-send",
-      text: "\u53D1\u9001"
+      text: t("common.send")
     });
     send.addEventListener("click", () => this.send());
     this.inputEl.addEventListener("keydown", (e) => {
@@ -1040,9 +1240,9 @@ var _SelectionPopover = class _SelectionPopover {
     let startY = 0;
     let origX = 0;
     let origY = 0;
-    const isBtn = (t) => {
+    const isBtn = (t2) => {
       var _a;
-      return !!((_a = t == null ? void 0 : t.closest) == null ? void 0 : _a.call(t, ".ai-popover-close"));
+      return !!((_a = t2 == null ? void 0 : t2.closest) == null ? void 0 : _a.call(t2, ".ai-popover-close"));
     };
     const begin = (cx, cy) => {
       var _a, _b, _c, _d;
@@ -1110,13 +1310,13 @@ var _SelectionPopover = class _SelectionPopover {
       (0, import_obsidian5.setIcon)(b, iconId);
       b.addEventListener("click", fn);
     };
-    mk("\u63D2\u5165\u5149\u6807", "corner-down-left", () => {
+    mk(t("popover.insert"), "corner-down-left", () => {
       this.editor.replaceRange(this.lastResult, this.editor.getCursor());
-      new import_obsidian5.Notice("\u5DF2\u63D2\u5165\u5230\u5149\u6807\u5904");
+      new import_obsidian5.Notice(t("popover.inserted"));
     });
-    mk("\u8986\u76D6\u9009\u533A", "refresh-cw", () => {
+    mk(t("popover.overwrite"), "refresh-cw", () => {
       this.editor.replaceRange(this.lastResult, this.from, this.to);
-      new import_obsidian5.Notice("\u5DF2\u8986\u76D6\u9009\u533A");
+      new import_obsidian5.Notice(t("popover.overwritten"));
     });
   }
   renderMessages() {
@@ -1129,12 +1329,12 @@ var _SelectionPopover = class _SelectionPopover {
       });
       bubble.createDiv({
         cls: "ai-popover-msg-role",
-        text: m.role === "user" ? "\u4F60" : "AI"
+        text: m.role === "user" ? t("common.you") : "AI"
       });
       bubble.createDiv({ cls: "ai-popover-msg-content", text });
       const copyBtn = bubble.createEl("button", {
         cls: "ai-popover-msg-copy",
-        attr: { type: "button", title: "\u590D\u5236\u672C\u6761\u6D88\u606F" }
+        attr: { type: "button", title: t("common.copy") }
       });
       (0, import_obsidian5.setIcon)(copyBtn, "copy");
       copyBtn.addEventListener("click", (e) => {
@@ -1145,7 +1345,7 @@ var _SelectionPopover = class _SelectionPopover {
         const editBtn = bubble.createEl("button", {
           cls: "ai-popover-msg-edit",
           text: "\u270F\uFE0F",
-          attr: { type: "button", title: "\u7F16\u8F91\u5E76\u91CD\u53D1" }
+          attr: { type: "button", title: t("common.edit_resend") }
         });
         editBtn.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -1157,10 +1357,10 @@ var _SelectionPopover = class _SelectionPopover {
   }
   /** 首条带选区上下文的消息，展示时只显示问题本身 */
   displayText(m) {
-    const marker = "\u8BF7\u57FA\u4E8E\u4E0A\u8FF0\u6587\u672C\u56DE\u7B54\u6211\u7684\u95EE\u9898\uFF1A";
+    const marker = t("popover.ask_marker");
     const i = m.content.indexOf(marker);
     if (m.role === "user" && i >= 0) {
-      return "\u{1F4CC} \u57FA\u4E8E\u9009\u533A\uFF1A" + m.content.slice(i + marker.length);
+      return "\u{1F4CC} " + t("popover.selection_label") + m.content.slice(i + marker.length);
     }
     return m.content;
   }
@@ -1169,8 +1369,10 @@ var _SelectionPopover = class _SelectionPopover {
     const idx = this.messages.indexOf(m);
     if (idx < 0 || !this.inputEl) return;
     this.messages = this.messages.slice(0, idx);
-    let t = this.displayText(m).replace(/^📌 基于选区：/, "");
-    this.inputEl.value = t;
+    const prefix = "\u{1F4CC} " + t("popover.selection_label");
+    let q = this.displayText(m);
+    if (q.startsWith(prefix)) q = q.slice(prefix.length);
+    this.inputEl.value = q;
     this.renderMessages();
     this.renderActions();
     this.inputEl.focus();
@@ -1191,7 +1393,7 @@ var _SelectionPopover = class _SelectionPopover {
       const rm = chip.createEl("button", {
         cls: "ai-chat-attach-remove",
         text: "\xD7",
-        attr: { type: "button", title: "\u79FB\u9664\u5173\u8054" }
+        attr: { type: "button", title: t("common.remove_attach") }
       });
       rm.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -1212,7 +1414,7 @@ var _SelectionPopover = class _SelectionPopover {
       if (!name) continue;
       const f = this.resolveNote(name);
       if (!f) {
-        new import_obsidian5.Notice(`\u672A\u627E\u5230\u7B14\u8BB0\uFF1A${name}`);
+        new import_obsidian5.Notice(tf("chat.note_not_found", { name }));
         continue;
       }
       if (!this.attachedNotes.some((x) => x.path === f.path)) {
@@ -1254,7 +1456,7 @@ var _SelectionPopover = class _SelectionPopover {
     if (!text || this.busy) return;
     const model = this.currentModel();
     if (!model) {
-      new import_obsidian5.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0\u6A21\u578B");
+      new import_obsidian5.Notice(t("common.no_model"));
       return;
     }
     this.attachRefsFromText(text);
@@ -1262,12 +1464,10 @@ var _SelectionPopover = class _SelectionPopover {
       if (this.selected) {
         this.messages.push({
           role: "user",
-          content: `\u4EE5\u4E0B\u662F\u9009\u4E2D\u7684\u6587\u672C\uFF1A
-"""
-${this.selected}
-"""
-
-\u8BF7\u57FA\u4E8E\u4E0A\u8FF0\u6587\u672C\u56DE\u7B54\u6211\u7684\u95EE\u9898\uFF1A${text}`
+          content: tf("popover.ask_prompt", {
+            selection: this.selected,
+            question: text
+          })
         });
       } else {
         this.messages.push({ role: "user", content: text });
@@ -1301,7 +1501,7 @@ ${this.selected}
     });
     const copyBtn = aiBubble.createEl("button", {
       cls: "ai-popover-msg-copy",
-      attr: { type: "button", title: "\u590D\u5236\u672C\u6761\u6D88\u606F" }
+      attr: { type: "button", title: t("common.copy") }
     });
     (0, import_obsidian5.setIcon)(copyBtn, "copy");
     copyBtn.addEventListener("click", (e) => {
@@ -1328,7 +1528,7 @@ ${content}`);
         if (blocks.length > 0) {
           noteCtx = `
 
-# \u5173\u8054\u7B14\u8BB0
+# ${t("chat.attached_notes")}
 ${blocks.join("\n\n---\n\n")}`;
         }
       }
@@ -1338,8 +1538,8 @@ ${blocks.join("\n\n---\n\n")}`;
         model,
         this.messages,
         {
-          onToken: (t) => {
-            acc += t;
+          onToken: (t2) => {
+            acc += t2;
             contentEl.setText(acc);
             this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
           },
@@ -1353,11 +1553,11 @@ ${blocks.join("\n\n---\n\n")}`;
           onError: (e) => {
             console.error("[Margin:popover] chat error", e);
             roleEl.setText("AI");
-            new import_obsidian5.Notice("\u9519\u8BEF\uFF1A" + e.message);
+            new import_obsidian5.Notice(t("common.error") + e.message);
             contentEl.setText("\u26A0\uFE0F " + e.message);
             const retryBtn = aiBubble.createEl("button", {
               cls: "ai-popover-msg-retry",
-              attr: { type: "button", title: "\u91CD\u65B0\u83B7\u53D6\u8FD9\u4E00\u8F6E\u56DE\u7B54" }
+              attr: { type: "button", title: t("common.retry") }
             });
             (0, import_obsidian5.setIcon)(retryBtn, "rotate-ccw");
             retryBtn.addEventListener("click", async (ev) => {
@@ -1382,7 +1582,7 @@ ${blocks.join("\n\n---\n\n")}`;
       (m) => m.id === this.plugin.settings.defaultModelId
     ) || this.plugin.settings.models[0];
     if (!model) {
-      this.usageEl.setText("\u672A\u9009\u6A21\u578B");
+      this.usageEl.setText(t("common.no_model_selected"));
       return;
     }
     const limits = modelLimitsText(model);
@@ -1391,7 +1591,11 @@ ${blocks.join("\n\n---\n\n")}`;
     if (u) {
       const line2 = this.usageEl.createDiv({ cls: "ai-popover-usage-line" });
       line2.setText(
-        `\u672C\u6B21 \u63D0\u793A ${u.promptTokens} \xB7 \u8865\u5168 ${u.completionTokens} \xB7 \u603B\u8BA1 ${u.totalTokens}`
+        tf("popover.this_usage", {
+          prompt: u.promptTokens,
+          completion: u.completionTokens,
+          total: u.totalTokens
+        })
       );
     }
   }
@@ -1404,13 +1608,16 @@ var SelectionPopover = _SelectionPopover;
 var AIPlugin = class extends import_obsidian6.Plugin {
   async onload() {
     await this.loadSettings();
+    setLang(
+      this.settings.language === "auto" ? detectObsidianLang() : this.settings.language
+    );
     this.registerView(VIEW_TYPE_CHAT, (leaf) => new ChatView(leaf, this));
-    this.addRibbonIcon("message-square", "\u6253\u5F00 AI Chat", () => {
+    this.addRibbonIcon("message-square", t("cmd.open_chat"), () => {
       this.activateChat();
     });
     this.addCommand({
       id: "open-ai-chat",
-      name: "\u6253\u5F00 AI Chat",
+      name: t("cmd.open_chat"),
       callback: () => this.activateChat()
     });
     this.registerEvent(
@@ -1435,7 +1642,7 @@ var AIPlugin = class extends import_obsidian6.Plugin {
     this.addSettingTab(new AISettingsTab(this.app, this));
     this.addCommand({
       id: "open-margin-popover",
-      name: "\u6253\u5F00 Margin \u60AC\u6D6E\u5BF9\u8BDD",
+      name: t("cmd.open_popover"),
       callback: () => {
         let view = this.app.workspace.getActiveViewOfType(import_obsidian6.MarkdownView);
         if (!view) {
@@ -1447,7 +1654,7 @@ var AIPlugin = class extends import_obsidian6.Plugin {
           }
         }
         if (!view) {
-          new import_obsidian6.Notice("\u5F53\u524D\u6CA1\u6709\u6253\u5F00\u7684\u7B14\u8BB0");
+          new import_obsidian6.Notice(t("popover.no_note"));
           return;
         }
         new SelectionPopover(this, view.editor, view.editor.getSelection()).open();

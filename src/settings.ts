@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import type AIPlugin from "./main";
 import { testGeminiModel } from "./llm/gemini";
+import { detectObsidianLang, setLang, t, tf, type Lang } from "./i18n";
 
 export type ProviderId = "gemini";
 
@@ -28,12 +29,15 @@ export interface AIPluginSettings {
   defaultModelId: string;
   /** 全局系统指令（可选） */
   systemInstruction: string;
+  /** 界面语言：auto=跟随 Obsidian */
+  language: "auto" | "zh" | "en";
 }
 
 export const DEFAULT_SETTINGS: AIPluginSettings = {
   models: [],
   defaultModelId: "",
   systemInstruction: "",
+  language: "auto",
 };
 
 /** 把 1048576 这类数字格式化成 1M / 8K，更易读 */
@@ -46,8 +50,14 @@ export function fmtLimit(n?: number): string {
 
 /** 模型行展示用的限额文本；任一缺失则不显示对应段 */
 export function modelLimitsText(m: AIModel): string {
-  const inL = m.inputTokenLimit != null ? `上下文 ${fmtLimit(m.inputTokenLimit)}` : null;
-  const outL = m.outputTokenLimit != null ? `输出 ${fmtLimit(m.outputTokenLimit)}` : null;
+  const inL =
+    m.inputTokenLimit != null
+      ? tf("settings.limit_context", { n: fmtLimit(m.inputTokenLimit) })
+      : null;
+  const outL =
+    m.outputTokenLimit != null
+      ? tf("settings.limit_output", { n: fmtLimit(m.outputTokenLimit) })
+      : null;
   const parts = [inL, outL].filter(Boolean) as string[];
   return parts.join(" · ");
 }
@@ -59,14 +69,14 @@ function createKeyInput(container: HTMLElement, value = ""): HTMLInputElement {
   const wrap = container.createDiv({ cls: "ai-set-key-wrap" });
   const input = wrap.createEl("input", {
     cls: "ai-set-input ai-set-key-input",
-    placeholder: "API Key",
+    placeholder: t("settings.api_key"),
     type: "password",
     value,
   });
   const eye = wrap.createEl("button", {
     cls: "ai-set-eye",
     text: "👁",
-    attr: { type: "button", title: "显示 / 隐藏" },
+    attr: { type: "button", title: t("settings.eye") },
   });
   eye.addEventListener("click", () => {
     const show = input.type === "password";
@@ -89,37 +99,57 @@ export class AISettingsTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.addClass("ai-set");
 
-    containerEl.createEl("h2", { text: "Margin 设置" });
+    containerEl.createEl("h2", { text: t("settings.title") });
 
+    this.renderLanguage(containerEl);
     this.renderAddModel(containerEl);
     this.renderModelList(containerEl);
     this.renderGeneral(containerEl);
   }
 
+  /** 界面语言 */
+  private renderLanguage(containerEl: HTMLElement): void {
+    const card = containerEl.createDiv({ cls: "ai-set-card" });
+    new Setting(card)
+      .setName(t("settings.language"))
+      .addDropdown((d) => {
+        d.addOption("auto", t("settings.lang_auto"));
+        d.addOption("zh", t("settings.lang_zh"));
+        d.addOption("en", t("settings.lang_en"));
+        d.setValue(this.plugin.settings.language);
+        d.onChange(async (v) => {
+          this.plugin.settings.language = v as "auto" | "zh" | "en";
+          setLang(v === "auto" ? detectObsidianLang() : (v as Lang));
+          await this.plugin.saveSettings();
+          this.display();
+        });
+      });
+  }
+
   /** 添加模型 */
   private renderAddModel(containerEl: HTMLElement): void {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
-    card.createEl("h3", { text: "添加模型" });
+    card.createEl("h3", { text: t("settings.add_model") });
     card.createEl("p", {
       cls: "ai-set-hint",
-      text: "模型名称填你想要的型号（如 gemini-3.5-flash），API Key 从 Google AI Studio 获取。可添加多个并随时切换。",
+      text: t("settings.add_hint"),
     });
 
     const addWrap = card.createDiv({ cls: "ai-set-add" });
     const nameInput = addWrap.createEl("input", {
       cls: "ai-set-input",
-      placeholder: "模型名称，如 gemini-3.5-flash",
+      placeholder: t("settings.model_name_placeholder"),
     });
     const keyInput = createKeyInput(addWrap);
     const addBtn = addWrap.createEl("button", {
       cls: "ai-set-add-btn mod-cta",
-      text: "添加模型",
+      text: t("settings.add_model"),
     });
     addBtn.addEventListener("click", async () => {
       const name = nameInput.value.trim();
       const key = keyInput.value.trim();
       if (!name || !key) {
-        new Notice("请填写模型名称和 API Key");
+        new Notice(t("settings.need_name_key"));
         return;
       }
       const model: AIModel = {
@@ -143,12 +173,12 @@ export class AISettingsTab extends PluginSettingTab {
   /** 模型列表 */
   private renderModelList(containerEl: HTMLElement): void {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
-    card.createEl("h3", { text: "已添加模型" });
+    card.createEl("h3", { text: t("settings.models") });
 
     if (this.plugin.settings.models.length === 0) {
       card.createEl("p", {
         cls: "ai-set-empty",
-        text: "还没有模型，先在上方添加。",
+        text: t("settings.empty"),
       });
       return;
     }
@@ -163,14 +193,14 @@ export class AISettingsTab extends PluginSettingTab {
         cls: "ai-set-model-limits",
         text: modelLimitsText(m),
       });
-      if (!limitsSpan.getText()) limitsSpan.setText("未测试");
+      if (!limitsSpan.getText()) limitsSpan.setText(t("settings.untested"));
 
       const actions = row.createDiv({ cls: "ai-set-model-actions" });
 
       const isDefault = this.plugin.settings.defaultModelId === m.id;
       const def = actions.createEl("button", {
         cls: "ai-set-model-btn" + (isDefault ? " is-default" : ""),
-        text: isDefault ? "默认 ✓" : "设为默认",
+        text: isDefault ? t("settings.is_default") : t("settings.set_default"),
       });
       def.addEventListener("click", async () => {
         this.plugin.settings.defaultModelId = m.id;
@@ -181,34 +211,39 @@ export class AISettingsTab extends PluginSettingTab {
       // 测试连接 → 拉取限额并回填
       const testBtn = actions.createEl("button", {
         cls: "ai-set-model-btn",
-        text: "测试",
+        text: t("settings.test"),
       });
       testBtn.addEventListener("click", async () => {
-        testBtn.setText("测试中…");
+        testBtn.setText(t("settings.testing"));
         const r = await testGeminiModel(m);
         if (r.ok && r.meta) {
           m.inputTokenLimit = r.meta.inputTokenLimit;
           m.outputTokenLimit = r.meta.outputTokenLimit;
           await this.plugin.saveSettings();
           new Notice(
-            `✓ ${m.name} 连接成功 · ${modelLimitsText(m) || "无限额信息"}`
+            tf("settings.test_ok", {
+              name: m.name,
+              limits: modelLimitsText(m) || t("settings.no_limits"),
+            })
           );
           this.display();
         } else {
-          new Notice("✗ 测试失败：" + (r.error || "未知错误"));
-          testBtn.setText("测试");
+          new Notice(
+            t("settings.test_fail_prefix") + (r.error || t("settings.unknown_error"))
+          );
+          testBtn.setText(t("settings.test"));
         }
       });
 
       const edit = actions.createEl("button", {
         cls: "ai-set-model-btn",
-        text: "修改",
+        text: t("settings.edit"),
       });
       edit.addEventListener("click", () => this.renderEditForm(row, m));
 
       const del = actions.createEl("button", {
         cls: "ai-set-model-btn ai-set-model-del",
-        text: "删除",
+        text: t("settings.delete"),
       });
       del.addEventListener("click", async () => {
         this.plugin.settings.models = this.plugin.settings.models.filter(
@@ -232,19 +267,19 @@ export class AISettingsTab extends PluginSettingTab {
     const nameInput = row.createEl("input", {
       cls: "ai-set-input",
       value: m.name,
-      placeholder: "模型名称",
+      placeholder: t("settings.model_name"),
     });
     const keyInput = createKeyInput(row, m.apiKey);
     const urlInput = row.createEl("input", {
       cls: "ai-set-input",
       value: m.baseUrl ?? "",
-      placeholder: "base URL（可选，代理 / 网关用）",
+      placeholder: t("settings.base_url_placeholder"),
     });
 
     const btnWrap = row.createDiv({ cls: "ai-set-model-actions" });
     const save = btnWrap.createEl("button", {
       cls: "ai-set-model-btn mod-cta",
-      text: "保存",
+      text: t("settings.save"),
     });
     save.addEventListener("click", async () => {
       m.name = nameInput.value.trim() || m.name;
@@ -255,7 +290,7 @@ export class AISettingsTab extends PluginSettingTab {
     });
     const cancel = btnWrap.createEl("button", {
       cls: "ai-set-model-btn",
-      text: "取消",
+      text: t("settings.cancel"),
     });
     cancel.addEventListener("click", () => this.display());
   }
@@ -265,8 +300,8 @@ export class AISettingsTab extends PluginSettingTab {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
 
     new Setting(card)
-      .setName("默认模型")
-      .setDesc("新对话 / 划词使用的默认模型")
+      .setName(t("settings.default_model"))
+      .setDesc(t("settings.default_model_desc"))
       .addDropdown((d) => {
         this.plugin.settings.models.forEach((m) => d.addOption(m.id, m.name));
         d.setValue(this.plugin.settings.defaultModelId);
@@ -277,11 +312,11 @@ export class AISettingsTab extends PluginSettingTab {
       });
 
     new Setting(card)
-      .setName("系统指令（可选）")
-      .setDesc("追加给模型的全局设定，例如“用简洁中文回答”")
-      .addTextArea((t) => {
-        t.setValue(this.plugin.settings.systemInstruction);
-        t.onChange(async (v) => {
+      .setName(t("settings.system_instruction"))
+      .setDesc(t("settings.system_instruction_desc"))
+      .addTextArea((ta) => {
+        ta.setValue(this.plugin.settings.systemInstruction);
+        ta.onChange(async (v) => {
           this.plugin.settings.systemInstruction = v;
           await this.plugin.saveSettings();
         });

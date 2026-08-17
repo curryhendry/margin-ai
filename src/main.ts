@@ -6,22 +6,29 @@ import {
 } from "./settings";
 import { ChatView, VIEW_TYPE_CHAT } from "./views/chatView";
 import { SelectionPopover } from "./selection/popover";
+import { detectObsidianLang, setLang, t } from "./i18n";
 
 export default class AIPlugin extends Plugin {
   declare settings: AIPluginSettings;
 
   async onload(): Promise<void> {
     await this.loadSettings();
+    // 界面语言：设置优先，auto 则跟随 Obsidian
+    setLang(
+      this.settings.language === "auto"
+        ? detectObsidianLang()
+        : this.settings.language
+    );
 
     this.registerView(VIEW_TYPE_CHAT, (leaf) => new ChatView(leaf, this));
 
-    this.addRibbonIcon("message-square", "打开 AI Chat", () => {
+    this.addRibbonIcon("message-square", t("cmd.open_chat"), () => {
       this.activateChat();
     });
 
     this.addCommand({
       id: "open-ai-chat",
-      name: "打开 AI Chat",
+      name: t("cmd.open_chat"),
       callback: () => this.activateChat(),
     });
 
@@ -54,7 +61,7 @@ export default class AIPlugin extends Plugin {
     // Cmd+P 命令面板 → 打开悬浮对话（带当前选区；无选区也可）
     this.addCommand({
       id: "open-margin-popover",
-      name: "打开 Margin 悬浮对话",
+      name: t("cmd.open_popover"),
       callback: () => {
         // 优先活跃 markdown 视图；否则回退到最近的 markdown leaf
         // （右侧 Chat 视图聚焦时 activeLeaf 不是 MarkdownView，需 fallback）
@@ -68,7 +75,7 @@ export default class AIPlugin extends Plugin {
           }
         }
         if (!view) {
-          new Notice("当前没有打开的笔记");
+          new Notice(t("popover.no_note"));
           return;
         }
         new SelectionPopover(this, view.editor, view.editor.getSelection()).open();

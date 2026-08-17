@@ -5,6 +5,7 @@ import { getProvider } from "../llm";
 import { modelLimitsText, type AIModel } from "../settings";
 import { copyText } from "../util";
 import { NoteLinkSuggest } from "../linkSuggest";
+import { t, tf } from "../i18n";
 
 export const VIEW_TYPE_CHAT = "margin-chat";
 
@@ -94,7 +95,7 @@ export class ChatView extends ItemView {
       const rm = chip.createEl("button", {
         cls: "ai-chat-attach-remove",
         text: "×",
-        attr: { type: "button", title: "移除关联" },
+        attr: { type: "button", title: t("common.remove_attach") },
       });
       rm.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -151,7 +152,7 @@ export class ChatView extends ItemView {
 
     const newBtn = header.createEl("button", {
       cls: "ai-chat-clear",
-      attr: { type: "button", title: "新对话" },
+      attr: { type: "button", title: t("chat.new") },
     });
     setIcon(newBtn, "plus");
     newBtn.addEventListener("click", () => {
@@ -177,11 +178,11 @@ export class ChatView extends ItemView {
     const inputWrap = root.createDiv({ cls: "ai-chat-input-wrap" });
     this.inputEl = inputWrap.createEl("textarea", {
       cls: "ai-chat-input",
-      placeholder: "输入消息，Enter 发送，Shift+Enter 换行",
+      placeholder: t("chat.placeholder"),
     });
     const sendBtn = inputWrap.createEl("button", {
       cls: "ai-chat-send",
-      text: "发送",
+      text: t("common.send"),
     });
     sendBtn.addEventListener("click", () => this.send());
     this.inputEl.addEventListener("keydown", (e) => {
@@ -207,14 +208,14 @@ export class ChatView extends ItemView {
       });
       bubble.createEl("div", {
         cls: "ai-msg-role",
-        text: m.role === "user" ? "你" : "AI",
+        text: m.role === "user" ? t("common.you") : "AI",
       });
       bubble.createEl("div", { cls: "ai-msg-content", text: m.content });
 
       // 复制（每条消息）
       const copyBtn = bubble.createEl("button", {
         cls: "ai-msg-copy",
-        attr: { type: "button", title: "复制本条消息" },
+        attr: { type: "button", title: t("common.copy") },
       });
       setIcon(copyBtn, "copy");
       copyBtn.addEventListener("click", (e) => {
@@ -227,7 +228,7 @@ export class ChatView extends ItemView {
         const editBtn = bubble.createEl("button", {
           cls: "ai-msg-edit",
           text: "✏️",
-          attr: { type: "button", title: "编辑并重发" },
+          attr: { type: "button", title: t("common.edit_resend") },
         });
         editBtn.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -247,7 +248,7 @@ export class ChatView extends ItemView {
     if (!text || this.busy) return;
     const model = this.currentModel();
     if (!model) {
-      new Notice("请先在设置中添加模型");
+      new Notice(t("common.no_model"));
       return;
     }
     // 解析 [[笔记名]] → 加入输入框关联 chip（可删除）
@@ -269,7 +270,7 @@ export class ChatView extends ItemView {
       if (!name) continue;
       const f = this.resolveNote(name);
       if (!f) {
-        new Notice(`未找到笔记：${name}`);
+        new Notice(tf("chat.note_not_found", { name }));
         continue;
       }
       if (!this.attachedNotes.some((x) => x.path === f.path)) {
@@ -348,7 +349,7 @@ export class ChatView extends ItemView {
     });
     const copyBtn = aiBubble.createEl("button", {
       cls: "ai-msg-copy",
-      attr: { type: "button", title: "复制本条消息" },
+      attr: { type: "button", title: t("common.copy") },
     });
     setIcon(copyBtn, "copy");
     copyBtn.addEventListener("click", (e) => {
@@ -374,7 +375,7 @@ export class ChatView extends ItemView {
           }
         }
         if (blocks.length > 0) {
-          noteCtx += `\n\n# 关联笔记\n${blocks.join("\n\n---\n\n")}`;
+          noteCtx += `\n\n# ${t("chat.attached_notes")}\n${blocks.join("\n\n---\n\n")}`;
         }
       }
       const systemInstruction = (sys ? sys + "\n\n" : "") + noteCtx;
@@ -401,11 +402,11 @@ export class ChatView extends ItemView {
           onError: (e) => {
             console.error("[Margin:chat] chat error", e);
             roleEl.setText("AI");
-            new Notice("错误：" + e.message);
+            new Notice(t("common.error") + e.message);
             contentEl.setText("⚠️ " + e.message);
             const retryBtn = aiBubble.createEl("button", {
               cls: "ai-msg-retry",
-              attr: { type: "button", title: "重新获取这一轮回答" },
+              attr: { type: "button", title: t("common.retry") },
             });
             setIcon(retryBtn, "rotate-ccw");
             retryBtn.addEventListener("click", async (ev) => {
@@ -430,14 +431,25 @@ export class ChatView extends ItemView {
     const m = this.currentModel();
     const limits = m ? modelLimitsText(m) : "";
     const row1 = this.usageEl.createDiv({ cls: "ai-chat-usage-line" });
-    row1.setText(`${m?.name ?? "未选模型"}${limits ? " · " + limits : ""}`);
+    row1.setText(
+      `${m?.name ?? t("common.no_model_selected")}${limits ? " · " + limits : ""}`
+    );
     const row2 = this.usageEl.createDiv({ cls: "ai-chat-usage-line" });
     const s = this.sessionUsage;
     const tail = u
-      ? `本次 ${u.promptTokens}+${u.completionTokens}=${u.totalTokens}`
+      ? tf("chat.this_usage", {
+          prompt: u.promptTokens,
+          completion: u.completionTokens,
+          total: u.totalTokens,
+        })
       : "—";
     row2.setText(
-      `会话累计 ${s.prompt}+${s.completion}=${s.total} tokens · ${tail}`
+      tf("chat.session_usage", {
+        prompt: s.prompt,
+        completion: s.completion,
+        total: s.total,
+        tail,
+      })
     );
   }
 }
