@@ -5,6 +5,7 @@
 
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/curryhendry/margin-ai?style=flat-square)](https://github.com/curryhendry/margin-ai/releases/latest)
 [![GitHub stars](https://img.shields.io/github/stars/curryhendry/margin-ai?style=flat-square)](https://github.com/curryhendry/margin-ai)
+[![MIT License](https://img.shields.io/github/license/curryhendry/margin-ai?style=flat-square)](LICENSE)
 
 ---
 
@@ -49,6 +50,14 @@
 <img alt="设置" src="https://github.com/user-attachments/assets/1abbf5b7-3de0-4089-8d17-183ab50341ea" />
 
 <img alt="悬浮窗对话" src="https://github.com/user-attachments/assets/39ec5df2-e5b5-480c-b54f-bc150c2a4149" />
+
+---
+
+## 隐私说明
+
+- 🔑 **API Key 仅存本地**：模型 API Key 保存在 vault 的 `data.json`，不会上传到任何服务器
+- 📤 **笔记内容发送给模型**：你主动关联的笔记、选区的文字会发送到你配置的模型 API（如 Gemini）以生成回答
+- 📊 **不收集数据**：插件不包含统计、遥测或任何第三方上报
 
 ---
 
