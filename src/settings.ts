@@ -117,11 +117,10 @@ export class AISettingsTab extends PluginSettingTab {
         d.addOption("zh", t("settings.lang_zh"));
         d.addOption("en", t("settings.lang_en"));
         d.setValue(this.plugin.settings.language);
-        d.onChange(async (v) => {
+        d.onChange((v) => {
           this.plugin.settings.language = v as "auto" | "zh" | "en";
           setLang(v === "auto" ? detectObsidianLang() : (v as Lang));
-          await this.plugin.saveSettings();
-          this.display();
+          void this.plugin.saveSettings().then(() => this.display());
         });
       });
   }
@@ -145,29 +144,34 @@ export class AISettingsTab extends PluginSettingTab {
       cls: "ai-set-add-btn mod-cta",
       text: t("settings.add_model"),
     });
-    addBtn.addEventListener("click", async () => {
+    addBtn.addEventListener("click", () => {
       const name = nameInput.value.trim();
       const key = keyInput.value.trim();
       if (!name || !key) {
         new Notice(t("settings.need_name_key"));
         return;
       }
-      const model: AIModel = {
-        id:
-          "m_" +
-          Date.now().toString(36) +
-          Math.random().toString(36).slice(2, 6),
-        name,
-        provider: "gemini",
-        apiKey: key,
-      };
-      this.plugin.settings.models.push(model);
-      if (!this.plugin.settings.defaultModelId) {
-        this.plugin.settings.defaultModelId = model.id;
-      }
-      await this.plugin.saveSettings();
-      this.display();
+      void this.addModel(name, key);
     });
+  }
+
+  /** 添加模型（提取自 addBtn handler，避免 async 箭头被 lint 标记） */
+  private async addModel(name: string, key: string): Promise<void> {
+    const model: AIModel = {
+      id:
+        "m_" +
+        Date.now().toString(36) +
+        Math.random().toString(36).slice(2, 6),
+      name,
+      provider: "gemini",
+      apiKey: key,
+    };
+    this.plugin.settings.models.push(model);
+    if (!this.plugin.settings.defaultModelId) {
+      this.plugin.settings.defaultModelId = model.id;
+    }
+    await this.plugin.saveSettings();
+    this.display();
   }
 
   /** 模型列表 */
@@ -187,9 +191,9 @@ export class AISettingsTab extends PluginSettingTab {
       const row = card.createDiv({ cls: "ai-set-model-row" });
 
       const info = row.createDiv({ cls: "ai-set-model-info" });
-      info.createEl("span", { cls: "ai-set-model-name", text: m.name });
-      info.createEl("span", { cls: "ai-set-model-provider", text: m.provider });
-      const limitsSpan = info.createEl("span", {
+      info.createSpan({ cls: "ai-set-model-name", text: m.name });
+      info.createSpan({ cls: "ai-set-model-provider", text: m.provider });
+      const limitsSpan = info.createSpan({
         cls: "ai-set-model-limits",
         text: modelLimitsText(m),
       });
@@ -202,10 +206,8 @@ export class AISettingsTab extends PluginSettingTab {
         cls: "ai-set-model-btn" + (isDefault ? " is-default" : ""),
         text: isDefault ? t("settings.is_default") : t("settings.set_default"),
       });
-      def.addEventListener("click", async () => {
-        this.plugin.settings.defaultModelId = m.id;
-        await this.plugin.saveSettings();
-        this.display();
+      def.addEventListener("click", () => {
+        void this.setDefaultModel(m.id);
       });
 
       // 测试连接 → 拉取限额并回填
@@ -213,26 +215,8 @@ export class AISettingsTab extends PluginSettingTab {
         cls: "ai-set-model-btn",
         text: t("settings.test"),
       });
-      testBtn.addEventListener("click", async () => {
-        testBtn.setText(t("settings.testing"));
-        const r = await testGeminiModel(m);
-        if (r.ok && r.meta) {
-          m.inputTokenLimit = r.meta.inputTokenLimit;
-          m.outputTokenLimit = r.meta.outputTokenLimit;
-          await this.plugin.saveSettings();
-          new Notice(
-            tf("settings.test_ok", {
-              name: m.name,
-              limits: modelLimitsText(m) || t("settings.no_limits"),
-            })
-          );
-          this.display();
-        } else {
-          new Notice(
-            t("settings.test_fail_prefix") + (r.error || t("settings.unknown_error"))
-          );
-          testBtn.setText(t("settings.test"));
-        }
+      testBtn.addEventListener("click", () => {
+        void this.testModel(m, testBtn);
       });
 
       const edit = actions.createEl("button", {
@@ -245,18 +229,53 @@ export class AISettingsTab extends PluginSettingTab {
         cls: "ai-set-model-btn ai-set-model-del",
         text: t("settings.delete"),
       });
-      del.addEventListener("click", async () => {
-        this.plugin.settings.models = this.plugin.settings.models.filter(
-          (x) => x.id !== m.id
-        );
-        if (this.plugin.settings.defaultModelId === m.id) {
-          this.plugin.settings.defaultModelId =
-            this.plugin.settings.models[0]?.id ?? "";
-        }
-        await this.plugin.saveSettings();
-        this.display();
+      del.addEventListener("click", () => {
+        void this.deleteModel(m);
       });
     });
+  }
+
+  /** 设为默认（提取自 def 按钮 handler） */
+  private async setDefaultModel(id: string): Promise<void> {
+    this.plugin.settings.defaultModelId = id;
+    await this.plugin.saveSettings();
+    this.display();
+  }
+
+  /** 测试连接并回填限额（提取自 testBtn handler） */
+  private async testModel(m: AIModel, testBtn: HTMLButtonElement): Promise<void> {
+    testBtn.setText(t("settings.testing"));
+    const r = await testGeminiModel(m);
+    if (r.ok && r.meta) {
+      m.inputTokenLimit = r.meta.inputTokenLimit;
+      m.outputTokenLimit = r.meta.outputTokenLimit;
+      await this.plugin.saveSettings();
+      new Notice(
+        tf("settings.test_ok", {
+          name: m.name,
+          limits: modelLimitsText(m) || t("settings.no_limits"),
+        })
+      );
+      this.display();
+    } else {
+      new Notice(
+        t("settings.test_fail_prefix") + (r.error || t("settings.unknown_error"))
+      );
+      testBtn.setText(t("settings.test"));
+    }
+  }
+
+  /** 删除模型（提取自 del 按钮 handler） */
+  private async deleteModel(m: AIModel): Promise<void> {
+    this.plugin.settings.models = this.plugin.settings.models.filter(
+      (x) => x.id !== m.id
+    );
+    if (this.plugin.settings.defaultModelId === m.id) {
+      this.plugin.settings.defaultModelId =
+        this.plugin.settings.models[0]?.id ?? "";
+    }
+    await this.plugin.saveSettings();
+    this.display();
   }
 
   /** 行内编辑 */
@@ -281,12 +300,11 @@ export class AISettingsTab extends PluginSettingTab {
       cls: "ai-set-model-btn mod-cta",
       text: t("settings.save"),
     });
-    save.addEventListener("click", async () => {
+    save.addEventListener("click", () => {
       m.name = nameInput.value.trim() || m.name;
       m.apiKey = keyInput.value.trim() || m.apiKey;
       m.baseUrl = urlInput.value.trim() || undefined;
-      await this.plugin.saveSettings();
-      this.display();
+      void this.plugin.saveSettings().then(() => this.display());
     });
     const cancel = btnWrap.createEl("button", {
       cls: "ai-set-model-btn",
@@ -305,9 +323,9 @@ export class AISettingsTab extends PluginSettingTab {
       .addDropdown((d) => {
         this.plugin.settings.models.forEach((m) => d.addOption(m.id, m.name));
         d.setValue(this.plugin.settings.defaultModelId);
-        d.onChange(async (v) => {
+        d.onChange((v) => {
           this.plugin.settings.defaultModelId = v;
-          await this.plugin.saveSettings();
+          void this.plugin.saveSettings();
         });
       });
 
@@ -316,9 +334,9 @@ export class AISettingsTab extends PluginSettingTab {
       .setDesc(t("settings.system_instruction_desc"))
       .addTextArea((ta) => {
         ta.setValue(this.plugin.settings.systemInstruction);
-        ta.onChange(async (v) => {
+        ta.onChange((v) => {
           this.plugin.settings.systemInstruction = v;
-          await this.plugin.saveSettings();
+          void this.plugin.saveSettings();
         });
       });
   }

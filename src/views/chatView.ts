@@ -206,11 +206,11 @@ export class ChatView extends ItemView {
       const bubble = this.messagesEl.createDiv({
         cls: `ai-msg ai-msg-${m.role}`,
       });
-      bubble.createEl("div", {
+      bubble.createDiv({
         cls: "ai-msg-role",
         text: m.role === "user" ? t("common.you") : "AI",
       });
-      bubble.createEl("div", { cls: "ai-msg-content", text: m.content });
+      bubble.createDiv({ cls: "ai-msg-content", text: m.content });
 
       // 复制（每条消息）
       const copyBtn = bubble.createEl("button", {
@@ -333,9 +333,9 @@ export class ChatView extends ItemView {
 
     let acc = "";
     const aiBubble = this.messagesEl.createDiv({ cls: "ai-msg ai-msg-model" });
-    const roleEl = aiBubble.createEl("div", { cls: "ai-msg-role" });
+    const roleEl = aiBubble.createDiv({ cls: "ai-msg-role" });
     roleEl.createSpan({ cls: "ai-loading-spinner" });
-    const contentEl = aiBubble.createEl("div", {
+    const contentEl = aiBubble.createDiv({
       cls: "ai-msg-content",
       text: "",
     });

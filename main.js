@@ -67,7 +67,6 @@ var GeminiProvider = class {
     return testGeminiModel(model);
   }
   async chat(model, messages, cb, opts) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
     const base = model.baseUrl || "https://generativelanguage.googleapis.com/v1beta";
     const url = `${base}/models/${encodeURIComponent(
       model.name
@@ -82,38 +81,19 @@ var GeminiProvider = class {
         parts: [{ text: opts.systemInstruction }]
       };
     }
-    let res;
-    try {
-      res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      });
-    } catch (e) {
-      (_a = cb.onError) == null ? void 0 : _a.call(cb, new Error("\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25\uFF1A" + e.message));
-      return;
-    }
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      (_b = cb.onError) == null ? void 0 : _b.call(
-        cb,
-        new Error(`Gemini API ${res.status}: ${text.slice(0, 300)}`)
-      );
-      return;
-    }
-    if (!res.body) {
-      (_c = cb.onError) == null ? void 0 : _c.call(cb, new Error("\u54CD\u5E94\u4E3A\u7A7A"));
-      return;
-    }
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buf = "";
-    let usage = null;
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
+    return new Promise((resolve) => {
+      var _a;
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", url);
+      xhr.setRequestHeader("Content-Type", "application/json");
+      let usage = null;
+      let buf = "";
+      let lastLen = 0;
+      const parseChunk = () => {
+        var _a2, _b, _c, _d, _e, _f, _g, _h;
+        const text = xhr.responseText;
+        buf += text.slice(lastLen);
+        lastLen = text.length;
         const lines = buf.split("\n");
         buf = lines.pop() || "";
         for (const line of lines) {
@@ -123,24 +103,50 @@ var GeminiProvider = class {
           if (!json || json === "[DONE]") continue;
           try {
             const data = JSON.parse(json);
-            const text = ((_g = (_f = (_e = (_d = data.candidates) == null ? void 0 : _d[0]) == null ? void 0 : _e.content) == null ? void 0 : _f.parts) == null ? void 0 : _g.map((p) => p.text || "").join("")) || "";
-            if (text) (_h = cb.onToken) == null ? void 0 : _h.call(cb, text);
+            const piece = ((_d = (_c = (_b = (_a2 = data.candidates) == null ? void 0 : _a2[0]) == null ? void 0 : _b.content) == null ? void 0 : _c.parts) == null ? void 0 : _d.map((p) => p.text || "").join("")) || "";
+            if (piece) (_e = cb.onToken) == null ? void 0 : _e.call(cb, piece);
             if (data.usageMetadata) {
               usage = {
-                promptTokens: (_i = data.usageMetadata.promptTokenCount) != null ? _i : 0,
-                completionTokens: (_j = data.usageMetadata.candidatesTokenCount) != null ? _j : 0,
-                totalTokens: (_k = data.usageMetadata.totalTokenCount) != null ? _k : 0
+                promptTokens: (_f = data.usageMetadata.promptTokenCount) != null ? _f : 0,
+                completionTokens: (_g = data.usageMetadata.candidatesTokenCount) != null ? _g : 0,
+                totalTokens: (_h = data.usageMetadata.totalTokenCount) != null ? _h : 0
               };
             }
           } catch (e) {
           }
         }
+      };
+      xhr.onprogress = parseChunk;
+      xhr.onload = () => {
+        var _a2, _b;
+        parseChunk();
+        if (xhr.status >= 400) {
+          (_a2 = cb.onError) == null ? void 0 : _a2.call(
+            cb,
+            new Error(`Gemini API ${xhr.status}: ${(xhr.responseText || "").slice(0, 300)}`)
+          );
+        } else {
+          (_b = cb.onDone) == null ? void 0 : _b.call(cb, usage);
+        }
+        resolve();
+      };
+      xhr.onerror = () => {
+        var _a2;
+        (_a2 = cb.onError) == null ? void 0 : _a2.call(cb, new Error("\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25"));
+        resolve();
+      };
+      xhr.onabort = () => {
+        var _a2;
+        (_a2 = cb.onError) == null ? void 0 : _a2.call(cb, new Error("\u8BF7\u6C42\u5DF2\u4E2D\u65AD"));
+        resolve();
+      };
+      try {
+        xhr.send(JSON.stringify(body));
+      } catch (e) {
+        (_a = cb.onError) == null ? void 0 : _a.call(cb, new Error("\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25\uFF1A" + e.message));
+        resolve();
       }
-    } catch (e) {
-      (_l = cb.onError) == null ? void 0 : _l.call(cb, new Error("\u8BFB\u53D6\u54CD\u5E94\u5931\u8D25\uFF1A" + e.message));
-      return;
-    }
-    (_m = cb.onDone) == null ? void 0 : _m.call(cb, usage);
+    });
   }
 };
 
@@ -373,11 +379,10 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
       d.addOption("zh", t("settings.lang_zh"));
       d.addOption("en", t("settings.lang_en"));
       d.setValue(this.plugin.settings.language);
-      d.onChange(async (v) => {
+      d.onChange((v) => {
         this.plugin.settings.language = v;
         setLang(v === "auto" ? detectObsidianLang() : v);
-        await this.plugin.saveSettings();
-        this.display();
+        void this.plugin.saveSettings().then(() => this.display());
       });
     });
   }
@@ -399,26 +404,30 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
       cls: "ai-set-add-btn mod-cta",
       text: t("settings.add_model")
     });
-    addBtn.addEventListener("click", async () => {
+    addBtn.addEventListener("click", () => {
       const name = nameInput.value.trim();
       const key = keyInput.value.trim();
       if (!name || !key) {
         new import_obsidian3.Notice(t("settings.need_name_key"));
         return;
       }
-      const model = {
-        id: "m_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-        name,
-        provider: "gemini",
-        apiKey: key
-      };
-      this.plugin.settings.models.push(model);
-      if (!this.plugin.settings.defaultModelId) {
-        this.plugin.settings.defaultModelId = model.id;
-      }
-      await this.plugin.saveSettings();
-      this.display();
+      void this.addModel(name, key);
     });
+  }
+  /** 添加模型（提取自 addBtn handler，避免 async 箭头被 lint 标记） */
+  async addModel(name, key) {
+    const model = {
+      id: "m_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name,
+      provider: "gemini",
+      apiKey: key
+    };
+    this.plugin.settings.models.push(model);
+    if (!this.plugin.settings.defaultModelId) {
+      this.plugin.settings.defaultModelId = model.id;
+    }
+    await this.plugin.saveSettings();
+    this.display();
   }
   /** 模型列表 */
   renderModelList(containerEl) {
@@ -434,9 +443,9 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
     this.plugin.settings.models.forEach((m) => {
       const row = card.createDiv({ cls: "ai-set-model-row" });
       const info = row.createDiv({ cls: "ai-set-model-info" });
-      info.createEl("span", { cls: "ai-set-model-name", text: m.name });
-      info.createEl("span", { cls: "ai-set-model-provider", text: m.provider });
-      const limitsSpan = info.createEl("span", {
+      info.createSpan({ cls: "ai-set-model-name", text: m.name });
+      info.createSpan({ cls: "ai-set-model-provider", text: m.provider });
+      const limitsSpan = info.createSpan({
         cls: "ai-set-model-limits",
         text: modelLimitsText(m)
       });
@@ -447,35 +456,15 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
         cls: "ai-set-model-btn" + (isDefault ? " is-default" : ""),
         text: isDefault ? t("settings.is_default") : t("settings.set_default")
       });
-      def.addEventListener("click", async () => {
-        this.plugin.settings.defaultModelId = m.id;
-        await this.plugin.saveSettings();
-        this.display();
+      def.addEventListener("click", () => {
+        void this.setDefaultModel(m.id);
       });
       const testBtn = actions.createEl("button", {
         cls: "ai-set-model-btn",
         text: t("settings.test")
       });
-      testBtn.addEventListener("click", async () => {
-        testBtn.setText(t("settings.testing"));
-        const r = await testGeminiModel(m);
-        if (r.ok && r.meta) {
-          m.inputTokenLimit = r.meta.inputTokenLimit;
-          m.outputTokenLimit = r.meta.outputTokenLimit;
-          await this.plugin.saveSettings();
-          new import_obsidian3.Notice(
-            tf("settings.test_ok", {
-              name: m.name,
-              limits: modelLimitsText(m) || t("settings.no_limits")
-            })
-          );
-          this.display();
-        } else {
-          new import_obsidian3.Notice(
-            t("settings.test_fail_prefix") + (r.error || t("settings.unknown_error"))
-          );
-          testBtn.setText(t("settings.test"));
-        }
+      testBtn.addEventListener("click", () => {
+        void this.testModel(m, testBtn);
       });
       const edit = actions.createEl("button", {
         cls: "ai-set-model-btn",
@@ -486,18 +475,50 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
         cls: "ai-set-model-btn ai-set-model-del",
         text: t("settings.delete")
       });
-      del.addEventListener("click", async () => {
-        var _a, _b;
-        this.plugin.settings.models = this.plugin.settings.models.filter(
-          (x) => x.id !== m.id
-        );
-        if (this.plugin.settings.defaultModelId === m.id) {
-          this.plugin.settings.defaultModelId = (_b = (_a = this.plugin.settings.models[0]) == null ? void 0 : _a.id) != null ? _b : "";
-        }
-        await this.plugin.saveSettings();
-        this.display();
+      del.addEventListener("click", () => {
+        void this.deleteModel(m);
       });
     });
+  }
+  /** 设为默认（提取自 def 按钮 handler） */
+  async setDefaultModel(id) {
+    this.plugin.settings.defaultModelId = id;
+    await this.plugin.saveSettings();
+    this.display();
+  }
+  /** 测试连接并回填限额（提取自 testBtn handler） */
+  async testModel(m, testBtn) {
+    testBtn.setText(t("settings.testing"));
+    const r = await testGeminiModel(m);
+    if (r.ok && r.meta) {
+      m.inputTokenLimit = r.meta.inputTokenLimit;
+      m.outputTokenLimit = r.meta.outputTokenLimit;
+      await this.plugin.saveSettings();
+      new import_obsidian3.Notice(
+        tf("settings.test_ok", {
+          name: m.name,
+          limits: modelLimitsText(m) || t("settings.no_limits")
+        })
+      );
+      this.display();
+    } else {
+      new import_obsidian3.Notice(
+        t("settings.test_fail_prefix") + (r.error || t("settings.unknown_error"))
+      );
+      testBtn.setText(t("settings.test"));
+    }
+  }
+  /** 删除模型（提取自 del 按钮 handler） */
+  async deleteModel(m) {
+    var _a, _b;
+    this.plugin.settings.models = this.plugin.settings.models.filter(
+      (x) => x.id !== m.id
+    );
+    if (this.plugin.settings.defaultModelId === m.id) {
+      this.plugin.settings.defaultModelId = (_b = (_a = this.plugin.settings.models[0]) == null ? void 0 : _a.id) != null ? _b : "";
+    }
+    await this.plugin.saveSettings();
+    this.display();
   }
   /** 行内编辑 */
   renderEditForm(row, m) {
@@ -520,12 +541,11 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
       cls: "ai-set-model-btn mod-cta",
       text: t("settings.save")
     });
-    save.addEventListener("click", async () => {
+    save.addEventListener("click", () => {
       m.name = nameInput.value.trim() || m.name;
       m.apiKey = keyInput.value.trim() || m.apiKey;
       m.baseUrl = urlInput.value.trim() || void 0;
-      await this.plugin.saveSettings();
-      this.display();
+      void this.plugin.saveSettings().then(() => this.display());
     });
     const cancel = btnWrap.createEl("button", {
       cls: "ai-set-model-btn",
@@ -539,16 +559,16 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
     new import_obsidian3.Setting(card).setName(t("settings.default_model")).setDesc(t("settings.default_model_desc")).addDropdown((d) => {
       this.plugin.settings.models.forEach((m) => d.addOption(m.id, m.name));
       d.setValue(this.plugin.settings.defaultModelId);
-      d.onChange(async (v) => {
+      d.onChange((v) => {
         this.plugin.settings.defaultModelId = v;
-        await this.plugin.saveSettings();
+        void this.plugin.saveSettings();
       });
     });
     new import_obsidian3.Setting(card).setName(t("settings.system_instruction")).setDesc(t("settings.system_instruction_desc")).addTextArea((ta) => {
       ta.setValue(this.plugin.settings.systemInstruction);
-      ta.onChange(async (v) => {
+      ta.onChange((v) => {
         this.plugin.settings.systemInstruction = v;
-        await this.plugin.saveSettings();
+        void this.plugin.saveSettings();
       });
     });
   }
@@ -893,11 +913,11 @@ var ChatView = class extends import_obsidian6.ItemView {
       const bubble = this.messagesEl.createDiv({
         cls: `ai-msg ai-msg-${m.role}`
       });
-      bubble.createEl("div", {
+      bubble.createDiv({
         cls: "ai-msg-role",
         text: m.role === "user" ? t("common.you") : "AI"
       });
-      bubble.createEl("div", { cls: "ai-msg-content", text: m.content });
+      bubble.createDiv({ cls: "ai-msg-content", text: m.content });
       const copyBtn = bubble.createEl("button", {
         cls: "ai-msg-copy",
         attr: { type: "button", title: t("common.copy") }
@@ -1000,9 +1020,9 @@ var ChatView = class extends import_obsidian6.ItemView {
     this.busy = true;
     let acc = "";
     const aiBubble = this.messagesEl.createDiv({ cls: "ai-msg ai-msg-model" });
-    const roleEl = aiBubble.createEl("div", { cls: "ai-msg-role" });
+    const roleEl = aiBubble.createDiv({ cls: "ai-msg-role" });
     roleEl.createSpan({ cls: "ai-loading-spinner" });
-    const contentEl = aiBubble.createEl("div", {
+    const contentEl = aiBubble.createDiv({
       cls: "ai-msg-content",
       text: ""
     });
@@ -1663,7 +1683,7 @@ var AIPlugin = class extends import_obsidian8.Plugin {
       leaf = this.app.workspace.getRightLeaf(false);
       await leaf.setViewState({ type: VIEW_TYPE_CHAT, active: true });
     }
-    this.app.workspace.revealLeaf(leaf);
+    void this.app.workspace.revealLeaf(leaf);
   }
   async loadSettings() {
     this.settings = Object.assign(

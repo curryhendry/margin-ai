@@ -2,7 +2,7 @@
 
 # Margin
 
-> Margin is an AI assistant plugin for Obsidian. It provides a side-panel chat and a selection popover: select any text, ask questions about it, and insert or overwrite the result with one click. It supports multiple models, streaming output, note association, and usage statistics.
+> Margin is an AI assistant plugin for Obsidian: a side-panel chat plus a selection popover. Select any text, ask questions about it, and insert or overwrite the result with one click. Multi-model, streaming output, note association and usage statistics.
 
 > Obsidian AI 插件：右侧对话 + 划词悬浮问答。基于选区提问，结果一键插入/覆盖；支持多模型、流式输出与用量统计。
 > 没有什么科技含量，单纯为极简使用AI
@@ -13,78 +13,81 @@
 
 ---
 
-## 功能特点
+## Features / 功能特点
 
-- 💬 **右侧对话** — 侧边栏常驻聊天，流式输出，模型切换，会话用量统计
-- 🖱️ **划词问答** — 选中文字右键「Margin」，悬浮窗基于选区提问
-- 📥 **插入 / 覆盖** — 结果一键插入光标处或覆盖选区
-- 📎 **笔记关联** — 打开自动关联当前笔记；输入 `[[` 弹出候选补全，标签可删除
-- 🔄 **失败重试** — 请求失败一键重新获取，不重置历史
-- ⚙️ **多模型管理** — 设置页添加/删除模型，独立 API Key，连接测试回填限额
-
----
-
-## Installation
-
-**方式一：下载 ZIP**
-
-1. 点击本仓库 *Code* → *Download ZIP*
-2. 解压后放入 `<vault>/.obsidian/plugins/margin-ai-chat/` 目录
-
-**方式二：按版本下载**
-
-前往 [Releases](https://github.com/curryhendry/margin-ai/releases) 下载对应版本。
-
+- 💬 **Side-panel chat** / 右侧对话 — streaming output, model switching, session usage stats
+- 🖱️ **Selection popover** / 划词问答 — right-click "Margin" on selected text, ask about the selection
+- 📥 **Insert / Overwrite** / 插入 / 覆盖 — one-click insert at cursor or overwrite selection
+- 📎 **Note association** / 笔记关联 — auto-attach the current note; `[[` suggestion chips, removable
+- 🔄 **Retry** / 失败重试 — one-click retry on failure without losing history
+- ⚙️ **Multi-model** / 多模型管理 — add/remove models, independent API keys, connection test fills in limits
 
 ---
 
-## 配置（Gemini）
+## Installation / 安装
 
-1. 打开插件设置 → **添加模型**
-2. 模型名称填你想要的型号，例如 `gemini-3.5-flash`（与 Google AI Studio 显示一致）
-3. API Key 填你的 Gemini Key（[https://aistudio.google.com/api-keys](https://aistudio.google.com/api-keys)）
+**Option 1: Download ZIP** / 方式一：下载 ZIP
 
----
+1. Click *Code* → *Download ZIP* in this repository
+2. Extract and place in `<vault>/.obsidian/plugins/margin-ai-chat/`
+   （点击本仓库 *Code* → *Download ZIP*，解压后放入该目录）
 
-## Usage
+**Option 2: Download by Release** / 方式二：按版本下载
 
-1. **右侧对话**：点击侧边栏图标，或命令面板「打开 AI Chat」
-2. **划词问答**：选中文字 → 右键「Margin」→ 悬浮窗提问 → 插入光标 / 覆盖选区
-3. **关联笔记**：输入 `[[` 弹出笔记候选，选中即关联；标签可随时移除
-<img alt="设置" src="https://github.com/user-attachments/assets/1abbf5b7-3de0-4089-8d17-183ab50341ea" />
-
-<img alt="悬浮窗对话" src="https://github.com/user-attachments/assets/39ec5df2-e5b5-480c-b54f-bc150c2a4149" />
+Visit [Releases](https://github.com/curryhendry/margin-ai/releases) to download a specific version.
+（前往 [Releases](https://github.com/curryhendry/margin-ai/releases) 下载对应版本。）
 
 ---
 
-## 隐私说明
+## Configuration (Gemini) / 配置
 
-- 🔑 **API Key 仅存本地**：模型 API Key 保存在 vault 的 `data.json`，不会上传到任何服务器
-- 📤 **笔记内容发送给模型**：你主动关联的笔记、选区的文字会发送到你配置的模型 API（如 Gemini）以生成回答
-- 📊 **不收集数据**：插件不包含统计、遥测或任何第三方上报
-
----
-
-## 后续规划
-
-- [x] 右侧对话 + 划词悬浮问答
-- [x] 多模型管理
-- [x] 笔记 `[[ ]]` 关联与补全
-- [x] 失败重试
+1. Open plugin settings → **Add model** / 打开插件设置 → 添加模型
+2. Enter the model name you want, e.g. `gemini-3.5-flash` (matches Google AI Studio) / 模型名称填你想要的型号
+3. Enter your Gemini API key ([https://aistudio.google.com/api-keys](https://aistudio.google.com/api-keys)) / API Key 填你的 Gemini Key
 
 ---
 
-## 更新日志
+## Usage / 使用
+
+1. **Side-panel chat**: click the sidebar icon, or run "Open AI Chat" from the command palette / 点击侧边栏图标，或命令面板「打开 AI Chat」
+2. **Selection popover**: select text → right-click "Margin" → ask in the popover → insert at cursor / overwrite selection / 选中文字 → 右键「Margin」→ 悬浮窗提问 → 插入光标 / 覆盖选区
+3. **Note association**: type `[[` for note suggestions, pick to attach; tags can be removed anytime / 输入 `[[` 弹出笔记候选，选中即关联；标签可随时移除
+
+<img alt="设置 / Settings" src="https://github.com/user-attachments/assets/1abbf5b7-3de0-4089-8d17-183ab50341ea" />
+
+<img alt="悬浮窗对话 / Popover" src="https://github.com/user-attachments/assets/39ec5df2-e5b5-480c-b54f-bc150c2a4149" />
+
+---
+
+## Privacy / 隐私说明
+
+- 🔑 **API keys stay local** / API Key 仅存本地 — stored in your vault's `data.json`, never uploaded
+- 📤 **Note content is sent to the model** / 笔记内容发送给模型 — attached notes and selections go to your configured model API (e.g. Gemini)
+- 📊 **No data collection** / 不收集数据 — no analytics, telemetry, or third-party reporting
+
+---
+
+## Roadmap / 后续规划
+
+- [x] Side-panel chat + selection popover / 右侧对话 + 划词悬浮问答
+- [x] Multi-model management / 多模型管理
+- [x] Note `[[ ]]` association & suggestions / 笔记 `[[ ]]` 关联与补全
+- [x] Retry on failure / 失败重试
+
+---
+
+## Changelog / 更新日志
 
 [Releases](https://github.com/curryhendry/margin-ai/releases)
 
 ---
 
-## 致谢
+## Acknowledgements / 致谢
 
 - [Obsidian](https://obsidian.md)
 - [Google AI Studio](https://aistudio.google.com)
 
 ---
 
+Issues and Pull Requests are welcome!
 欢迎提交 Issue 和 Pull Request！

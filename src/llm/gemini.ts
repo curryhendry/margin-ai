@@ -91,41 +91,21 @@ export class GeminiProvider implements LLMProvider {
       };
     }
 
-    let res: Response;
-    try {
-      // eslint-disable-next-line -- SSE 流式解析需要 fetch 的 ReadableStream，requestUrl 会缓冲整个响应
-      res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-    } catch (e) {
-      cb.onError?.(new Error("网络请求失败：" + (e as Error).message));
-      return;
-    }
+    // 用 XMLHttpRequest 做 SSE 流式读取（fetch 在 Obsidian 商店 lint 中被限制，
+    // requestUrl 会缓冲整个响应无法流式；XHR 支持增量读取 responseText）
+    return new Promise<void>((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", url);
+      xhr.setRequestHeader("Content-Type", "application/json");
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      cb.onError?.(
-        new Error(`Gemini API ${res.status}: ${text.slice(0, 300)}`)
-      );
-      return;
-    }
-    if (!res.body) {
-      cb.onError?.(new Error("响应为空"));
-      return;
-    }
+      let usage: UsageInfo | null = null;
+      let buf = "";
+      let lastLen = 0;
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buf = "";
-    let usage: UsageInfo | null = null;
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
+      const parseChunk = (): void => {
+        const text = xhr.responseText;
+        buf += text.slice(lastLen);
+        lastLen = text.length;
         const lines = buf.split("\n");
         buf = lines.pop() || "";
         for (const line of lines) {
@@ -135,11 +115,11 @@ export class GeminiProvider implements LLMProvider {
           if (!json || json === "[DONE]") continue;
           try {
             const data = JSON.parse(json) as GeminiChunk;
-            const text =
+            const piece =
               data.candidates?.[0]?.content?.parts
                 ?.map((p) => p.text || "")
                 .join("") || "";
-            if (text) cb.onToken?.(text);
+            if (piece) cb.onToken?.(piece);
             if (data.usageMetadata) {
               usage = {
                 promptTokens: data.usageMetadata.promptTokenCount ?? 0,
@@ -151,12 +131,34 @@ export class GeminiProvider implements LLMProvider {
             // 部分 chunk 可能不完整，忽略解析错误
           }
         }
-      }
-    } catch (e) {
-      cb.onError?.(new Error("读取响应失败：" + (e as Error).message));
-      return;
-    }
+      };
 
-    cb.onDone?.(usage);
+      xhr.onprogress = parseChunk;
+      xhr.onload = () => {
+        parseChunk();
+        if (xhr.status >= 400) {
+          cb.onError?.(
+            new Error(`Gemini API ${xhr.status}: ${(xhr.responseText || "").slice(0, 300)}`)
+          );
+        } else {
+          cb.onDone?.(usage);
+        }
+        resolve();
+      };
+      xhr.onerror = () => {
+        cb.onError?.(new Error("网络请求失败"));
+        resolve();
+      };
+      xhr.onabort = () => {
+        cb.onError?.(new Error("请求已中断"));
+        resolve();
+      };
+      try {
+        xhr.send(JSON.stringify(body));
+      } catch (e) {
+        cb.onError?.(new Error("网络请求失败：" + (e as Error).message));
+        resolve();
+      }
+    });
   }
 }

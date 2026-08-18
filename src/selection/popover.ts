@@ -443,7 +443,7 @@ export class SelectionPopover {
     this.busy = true;
 
     let acc = "";
-    const aiBubble = this.messagesEl!.createDiv({
+    const aiBubble = this.messagesEl.createDiv({
       cls: "ai-popover-msg ai-popover-msg-model",
     });
     const roleEl = aiBubble.createDiv({ cls: "ai-popover-msg-role" });
@@ -492,7 +492,7 @@ export class SelectionPopover {
           onToken: (t) => {
             acc += t;
             contentEl.setText(acc);
-            this.messagesEl!.scrollTop = this.messagesEl!.scrollHeight;
+            this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
           },
           onDone: (u: UsageInfo | null) => {
             roleEl.setText("AI");

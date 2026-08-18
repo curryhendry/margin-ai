@@ -1,4 +1,4 @@
-import { Plugin, Editor, Menu, Notice, MarkdownView } from "obsidian";
+import { Plugin, Editor, Menu, Notice, MarkdownView, Workspace, EventRef } from "obsidian";
 import {
   AIPluginSettings,
   DEFAULT_SETTINGS,
@@ -7,6 +7,12 @@ import {
 import { ChatView, VIEW_TYPE_CHAT } from "./views/chatView";
 import { SelectionPopover } from "./selection/popover";
 import { detectObsidianLang, setLang, t } from "./i18n";
+
+/** 自定义事件：margin:settings-changed（避免对 workspace 用 any） */
+type MarginWorkspace = Workspace & {
+  on(name: "margin:settings-changed", callback: () => void): EventRef;
+  trigger(name: "margin:settings-changed"): void;
+};
 
 export default class AIPlugin extends Plugin {
   declare settings: AIPluginSettings;
@@ -84,7 +90,7 @@ export default class AIPlugin extends Plugin {
 
     // 设置变更后通知已打开的 chat 视图刷新模型列表
     this.registerEvent(
-      (this.app.workspace as any).on("margin:settings-changed", () => {
+      (this.app.workspace as MarginWorkspace).on("margin:settings-changed", () => {
         const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_CHAT)[0];
         if (leaf) (leaf.view as ChatView).refreshModels();
       })
@@ -101,19 +107,19 @@ export default class AIPlugin extends Plugin {
       leaf = this.app.workspace.getRightLeaf(false);
       await leaf.setViewState({ type: VIEW_TYPE_CHAT, active: true });
     }
-    this.app.workspace.revealLeaf(leaf);
+    void this.app.workspace.revealLeaf(leaf);
   }
 
   async loadSettings(): Promise<void> {
     this.settings = Object.assign(
       {},
       DEFAULT_SETTINGS,
-      await this.loadData()
+      (await this.loadData()) as Partial<AIPluginSettings>
     );
   }
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
-    (this.app.workspace as any).trigger("margin:settings-changed");
+    (this.app.workspace as MarginWorkspace).trigger("margin:settings-changed");
   }
 }
