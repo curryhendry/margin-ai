@@ -1,7 +1,7 @@
 {
   "id": "margin-ai-chat",
   "name": "Margin",
-  "version": "0.1.025",
+  "version": "0.1.027",
   "minAppVersion": "1.13.0",
   "description": "AI side chat and selection popover. Multi-model, streaming output, note association.",
   "author": "Garry",
