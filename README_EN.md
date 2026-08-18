@@ -28,7 +28,7 @@
 **Option 1: Download ZIP**
 
 1. Click *Code* → *Download ZIP* in this repository
-2. Extract and place in `<vault>/.obsidian/plugins/margin-ai/`
+2. Extract and place in `<vault>/.obsidian/plugins/obsidian-margin/`
 
 **Option 2: Download by Release**
 

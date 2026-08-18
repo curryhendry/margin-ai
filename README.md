@@ -27,7 +27,7 @@
 **方式一：下载 ZIP**
 
 1. 点击本仓库 *Code* → *Download ZIP*
-2. 解压后放入 `<vault>/.obsidian/plugins/margin-ai/` 目录
+2. 解压后放入 `<vault>/.obsidian/plugins/obsidian-margin/` 目录
 
 **方式二：按版本下载**
 
