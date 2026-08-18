@@ -70,9 +70,7 @@ export class NoteLinkSuggest {
 
   private render(): void {
     if (!this.el) {
-      this.el = document.createElement("div");
-      this.el.className = "ai-link-suggest";
-      document.body.appendChild(this.el);
+      this.el = document.body.createDiv({ cls: "ai-link-suggest" });
     }
     this.el.empty();
     for (let i = 0; i < this.items.length; i++) {
@@ -94,7 +92,6 @@ export class NoteLinkSuggest {
     }
     // 定位到输入框上方；空间不够则放下方
     const rect = this.input.getBoundingClientRect();
-    this.el.style.position = "fixed";
     this.el.style.left = rect.left + "px";
     this.el.style.width = Math.min(340, rect.width) + "px";
     const spaceAbove = rect.top - 8;

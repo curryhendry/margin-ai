@@ -1,5 +1,7 @@
 /** 简易 i18n：中英双语，跟随 Obsidian 语言 + 设置可覆盖 */
 
+import { getLanguage } from "obsidian";
+
 export type Lang = "zh" | "en";
 
 const zh: Record<string, string> = {
@@ -155,8 +157,7 @@ let lang: Lang = "zh";
 /** 从 Obsidian 的 locale 检测界面语言 */
 export function detectObsidianLang(): Lang {
   try {
-    const l = (window.localStorage.getItem("language") || "").toLowerCase();
-    if (l.startsWith("zh")) return "zh";
+    if (getLanguage().startsWith("zh")) return "zh";
   } catch {
     // 忽略
   }

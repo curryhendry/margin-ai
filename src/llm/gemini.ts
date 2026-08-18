@@ -1,3 +1,4 @@
+import { requestUrl } from "obsidian";
 import type { AIModel } from "../settings";
 import {
   ChatMessage,
@@ -8,6 +9,16 @@ import {
   ModelMeta,
   TestResult,
 } from "./types";
+
+/** Gemini 单个 SSE chunk 的形状 */
+interface GeminiChunk {
+  candidates?: { content?: { parts?: { text?: string }[] } }[];
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    totalTokenCount?: number;
+  };
+}
 
 /**
  * Gemini 流式对话客户端。
@@ -26,12 +37,15 @@ export async function testGeminiModel(model: AIModel): Promise<TestResult> {
     model.name
   )}?key=${model.apiKey}`;
   try {
-    const r = await fetch(url);
-    if (!r.ok) {
-      const t = await r.text().catch(() => "");
+    const r = await requestUrl({ url, throw: false });
+    if (r.status >= 400) {
+      const t = r.text || "";
       return { ok: false, error: `HTTP ${r.status}: ${t.slice(0, 200)}` };
     }
-    const j: any = await r.json();
+    const j = r.json as Partial<{
+      inputTokenLimit?: number;
+      outputTokenLimit?: number;
+    }>;
     const meta: ModelMeta = {};
     if (typeof j.inputTokenLimit === "number") {
       meta.inputTokenLimit = j.inputTokenLimit;
@@ -40,8 +54,8 @@ export async function testGeminiModel(model: AIModel): Promise<TestResult> {
       meta.outputTokenLimit = j.outputTokenLimit;
     }
     return { ok: true, meta };
-  } catch (e: any) {
-    return { ok: false, error: e?.message || String(e) };
+  } catch (e) {
+    return { ok: false, error: (e as Error)?.message || String(e) };
   }
 }
 
@@ -79,6 +93,7 @@ export class GeminiProvider implements LLMProvider {
 
     let res: Response;
     try {
+      // eslint-disable-next-line -- SSE 流式解析需要 fetch 的 ReadableStream，requestUrl 会缓冲整个响应
       res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -119,10 +134,10 @@ export class GeminiProvider implements LLMProvider {
           const json = trimmed.slice(5).trim();
           if (!json || json === "[DONE]") continue;
           try {
-            const data = JSON.parse(json);
+            const data = JSON.parse(json) as GeminiChunk;
             const text =
               data.candidates?.[0]?.content?.parts
-                ?.map((p: { text?: string }) => p.text || "")
+                ?.map((p) => p.text || "")
                 .join("") || "";
             if (text) cb.onToken?.(text);
             if (data.usageMetadata) {

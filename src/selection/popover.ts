@@ -55,8 +55,7 @@ export class SelectionPopover {
 
     this.noteKey = this.plugin.app.workspace.getActiveFile()?.path ?? "";
 
-    const root = document.createElement("div");
-    root.className = "ai-popover";
+    const root = document.body.createDiv({ cls: "ai-popover" });
     root.style.zIndex = String(Z_TOP);
     root.addEventListener("click", (e) => e.stopPropagation());
 
@@ -108,11 +107,11 @@ export class SelectionPopover {
       cls: "ai-popover-send",
       text: t("common.send"),
     });
-    send.addEventListener("click", () => this.send());
+    send.addEventListener("click", () => void this.send());
     this.inputEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        this.send();
+        void this.send();
       }
     });
 
@@ -123,7 +122,6 @@ export class SelectionPopover {
       (file, m) => this.insertNoteRef(file, m)
     );
 
-    document.body.appendChild(root);
     this.root = root;
 
     this.renderMessages();
@@ -231,7 +229,7 @@ export class SelectionPopover {
       return;
     }
     const mk = (label: string, iconId: string, fn: () => void): void => {
-      const b = this.actionsEl!.createEl("button", {
+      const b = this.actionsEl.createEl("button", {
         cls: "ai-popover-btn",
         attr: { type: "button", title: label },
       });
@@ -272,7 +270,7 @@ export class SelectionPopover {
       setIcon(copyBtn, "copy");
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        copyText(text);
+        void copyText(text);
       });
 
       // 用户消息可编辑重发
@@ -443,12 +441,6 @@ export class SelectionPopover {
    */
   private async runAssistantTurn(model: AIModel): Promise<void> {
     this.busy = true;
-    console.log(
-      "[Margin:popover] runAssistantTurn model=" +
-        model.name +
-        " messages=" +
-        this.messages.length
-    );
 
     let acc = "";
     const aiBubble = this.messagesEl!.createDiv({
@@ -467,7 +459,7 @@ export class SelectionPopover {
     setIcon(copyBtn, "copy");
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      copyText(acc);
+      void copyText(acc);
     });
 
     const provider = getProvider(model.provider);
@@ -519,12 +511,12 @@ export class SelectionPopover {
               attr: { type: "button", title: t("common.retry") },
             });
             setIcon(retryBtn, "rotate-ccw");
-            retryBtn.addEventListener("click", async (ev) => {
+            retryBtn.addEventListener("click", (ev) => {
               ev.stopPropagation();
               aiBubble.remove();
               const m = this.currentModel();
               if (!m) return;
-              await this.runAssistantTurn(m);
+              void this.runAssistantTurn(m);
             });
           },
         },

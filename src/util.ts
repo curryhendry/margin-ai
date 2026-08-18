@@ -37,12 +37,10 @@ export async function copyText(text: string): Promise<void> {
 
   // 3. execCommand 兜底
   try {
-    const ta = document.createElement("textarea");
+    const ta = document.body.createEl("textarea", {
+      cls: "ai-copy-helper",
+    });
     ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    ta.style.left = "-9999px";
-    document.body.appendChild(ta);
     ta.focus();
     ta.select();
     const ok = document.execCommand("copy");

@@ -184,11 +184,11 @@ export class ChatView extends ItemView {
       cls: "ai-chat-send",
       text: t("common.send"),
     });
-    sendBtn.addEventListener("click", () => this.send());
+    sendBtn.addEventListener("click", () => void this.send());
     this.inputEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        this.send();
+        void this.send();
       }
     });
 
@@ -220,7 +220,7 @@ export class ChatView extends ItemView {
       setIcon(copyBtn, "copy");
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        copyText(m.content);
+        void copyText(m.content);
       });
 
       // 用户消息可编辑重发
@@ -330,14 +330,6 @@ export class ChatView extends ItemView {
    */
   private async runAssistantTurn(model: AIModel): Promise<void> {
     this.busy = true;
-    console.log(
-      "[Margin:chat] runAssistantTurn model=" +
-        model.name +
-        " noteKey=" +
-        this.noteKey +
-        " messages=" +
-        this.messages.length
-    );
 
     let acc = "";
     const aiBubble = this.messagesEl.createDiv({ cls: "ai-msg ai-msg-model" });
@@ -354,7 +346,7 @@ export class ChatView extends ItemView {
     setIcon(copyBtn, "copy");
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      copyText(acc);
+      void copyText(acc);
     });
 
     const provider = getProvider(model.provider);
@@ -409,12 +401,12 @@ export class ChatView extends ItemView {
               attr: { type: "button", title: t("common.retry") },
             });
             setIcon(retryBtn, "rotate-ccw");
-            retryBtn.addEventListener("click", async (ev) => {
+            retryBtn.addEventListener("click", (ev) => {
               ev.stopPropagation();
               aiBubble.remove();
               const m = this.currentModel();
               if (!m) return;
-              await this.runAssistantTurn(m);
+              void this.runAssistantTurn(m);
             });
           },
         },

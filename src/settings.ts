@@ -58,7 +58,7 @@ export function modelLimitsText(m: AIModel): string {
     m.outputTokenLimit != null
       ? tf("settings.limit_output", { n: fmtLimit(m.outputTokenLimit) })
       : null;
-  const parts = [inL, outL].filter(Boolean) as string[];
+  const parts = [inL, outL].filter(Boolean);
   return parts.join(" · ");
 }
 
@@ -99,7 +99,7 @@ export class AISettingsTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.addClass("ai-set");
 
-    containerEl.createEl("h2", { text: t("settings.title") });
+    new Setting(containerEl).setName(t("settings.title")).setHeading();
 
     this.renderLanguage(containerEl);
     this.renderAddModel(containerEl);
@@ -129,7 +129,7 @@ export class AISettingsTab extends PluginSettingTab {
   /** 添加模型 */
   private renderAddModel(containerEl: HTMLElement): void {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
-    card.createEl("h3", { text: t("settings.add_model") });
+    new Setting(card).setName(t("settings.add_model")).setHeading();
     card.createEl("p", {
       cls: "ai-set-hint",
       text: t("settings.add_hint"),
@@ -173,7 +173,7 @@ export class AISettingsTab extends PluginSettingTab {
   /** 模型列表 */
   private renderModelList(containerEl: HTMLElement): void {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
-    card.createEl("h3", { text: t("settings.models") });
+    new Setting(card).setName(t("settings.models")).setHeading();
 
     if (this.plugin.settings.models.length === 0) {
       card.createEl("p", {

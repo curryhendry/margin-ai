@@ -28,24 +28,25 @@ __export(main_exports, {
   default: () => AIPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian6 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // src/settings.ts
-var import_obsidian = require("obsidian");
+var import_obsidian3 = require("obsidian");
 
 // src/llm/gemini.ts
+var import_obsidian = require("obsidian");
 async function testGeminiModel(model) {
   const base = model.baseUrl || "https://generativelanguage.googleapis.com/v1beta";
   const url = `${base}/models/${encodeURIComponent(
     model.name
   )}?key=${model.apiKey}`;
   try {
-    const r = await fetch(url);
-    if (!r.ok) {
-      const t2 = await r.text().catch(() => "");
+    const r = await (0, import_obsidian.requestUrl)({ url, throw: false });
+    if (r.status >= 400) {
+      const t2 = r.text || "";
       return { ok: false, error: `HTTP ${r.status}: ${t2.slice(0, 200)}` };
     }
-    const j = await r.json();
+    const j = r.json;
     const meta = {};
     if (typeof j.inputTokenLimit === "number") {
       meta.inputTokenLimit = j.inputTokenLimit;
@@ -144,6 +145,7 @@ var GeminiProvider = class {
 };
 
 // src/i18n.ts
+var import_obsidian2 = require("obsidian");
 var zh = {
   // common
   "common.send": "\u53D1\u9001",
@@ -288,8 +290,7 @@ var en = {
 var lang = "zh";
 function detectObsidianLang() {
   try {
-    const l = (window.localStorage.getItem("language") || "").toLowerCase();
-    if (l.startsWith("zh")) return "zh";
+    if ((0, import_obsidian2.getLanguage)().startsWith("zh")) return "zh";
   } catch (e) {
   }
   return "en";
@@ -348,7 +349,7 @@ function createKeyInput(container, value = "") {
   });
   return input;
 }
-var AISettingsTab = class extends import_obsidian.PluginSettingTab {
+var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     __publicField(this, "plugin");
@@ -358,7 +359,7 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("ai-set");
-    containerEl.createEl("h2", { text: t("settings.title") });
+    new import_obsidian3.Setting(containerEl).setName(t("settings.title")).setHeading();
     this.renderLanguage(containerEl);
     this.renderAddModel(containerEl);
     this.renderModelList(containerEl);
@@ -367,7 +368,7 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
   /** 界面语言 */
   renderLanguage(containerEl) {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
-    new import_obsidian.Setting(card).setName(t("settings.language")).addDropdown((d) => {
+    new import_obsidian3.Setting(card).setName(t("settings.language")).addDropdown((d) => {
       d.addOption("auto", t("settings.lang_auto"));
       d.addOption("zh", t("settings.lang_zh"));
       d.addOption("en", t("settings.lang_en"));
@@ -383,7 +384,7 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
   /** 添加模型 */
   renderAddModel(containerEl) {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
-    card.createEl("h3", { text: t("settings.add_model") });
+    new import_obsidian3.Setting(card).setName(t("settings.add_model")).setHeading();
     card.createEl("p", {
       cls: "ai-set-hint",
       text: t("settings.add_hint")
@@ -402,7 +403,7 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
       const name = nameInput.value.trim();
       const key = keyInput.value.trim();
       if (!name || !key) {
-        new import_obsidian.Notice(t("settings.need_name_key"));
+        new import_obsidian3.Notice(t("settings.need_name_key"));
         return;
       }
       const model = {
@@ -422,7 +423,7 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
   /** 模型列表 */
   renderModelList(containerEl) {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
-    card.createEl("h3", { text: t("settings.models") });
+    new import_obsidian3.Setting(card).setName(t("settings.models")).setHeading();
     if (this.plugin.settings.models.length === 0) {
       card.createEl("p", {
         cls: "ai-set-empty",
@@ -462,7 +463,7 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
           m.inputTokenLimit = r.meta.inputTokenLimit;
           m.outputTokenLimit = r.meta.outputTokenLimit;
           await this.plugin.saveSettings();
-          new import_obsidian.Notice(
+          new import_obsidian3.Notice(
             tf("settings.test_ok", {
               name: m.name,
               limits: modelLimitsText(m) || t("settings.no_limits")
@@ -470,7 +471,7 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
           );
           this.display();
         } else {
-          new import_obsidian.Notice(
+          new import_obsidian3.Notice(
             t("settings.test_fail_prefix") + (r.error || t("settings.unknown_error"))
           );
           testBtn.setText(t("settings.test"));
@@ -535,7 +536,7 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
   /** 默认模型下拉 + 系统指令 */
   renderGeneral(containerEl) {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
-    new import_obsidian.Setting(card).setName(t("settings.default_model")).setDesc(t("settings.default_model_desc")).addDropdown((d) => {
+    new import_obsidian3.Setting(card).setName(t("settings.default_model")).setDesc(t("settings.default_model_desc")).addDropdown((d) => {
       this.plugin.settings.models.forEach((m) => d.addOption(m.id, m.name));
       d.setValue(this.plugin.settings.defaultModelId);
       d.onChange(async (v) => {
@@ -543,7 +544,7 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian.Setting(card).setName(t("settings.system_instruction")).setDesc(t("settings.system_instruction_desc")).addTextArea((ta) => {
+    new import_obsidian3.Setting(card).setName(t("settings.system_instruction")).setDesc(t("settings.system_instruction_desc")).addTextArea((ta) => {
       ta.setValue(this.plugin.settings.systemInstruction);
       ta.onChange(async (v) => {
         this.plugin.settings.systemInstruction = v;
@@ -554,7 +555,7 @@ var AISettingsTab = class extends import_obsidian.PluginSettingTab {
 };
 
 // src/views/chatView.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/llm/index.ts
 var providers = {
@@ -567,13 +568,13 @@ function getProvider(id) {
 }
 
 // src/util.ts
-var import_obsidian2 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 async function copyText(text) {
   try {
     const electron = require("electron");
     if (electron == null ? void 0 : electron.clipboard) {
       electron.clipboard.writeText(text);
-      new import_obsidian2.Notice(t("common.copied"));
+      new import_obsidian4.Notice(t("common.copied"));
       return;
     }
   } catch (e) {
@@ -581,31 +582,29 @@ async function copyText(text) {
   if (navigator.clipboard && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(text);
-      new import_obsidian2.Notice(t("common.copied"));
+      new import_obsidian4.Notice(t("common.copied"));
       return;
     } catch (e) {
     }
   }
   try {
-    const ta = document.createElement("textarea");
+    const ta = document.body.createEl("textarea", {
+      cls: "ai-copy-helper"
+    });
     ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    ta.style.left = "-9999px";
-    document.body.appendChild(ta);
     ta.focus();
     ta.select();
     const ok = document.execCommand("copy");
     ta.remove();
-    if (ok) new import_obsidian2.Notice(t("common.copied"));
-    else new import_obsidian2.Notice(t("common.copy_failed"));
+    if (ok) new import_obsidian4.Notice(t("common.copied"));
+    else new import_obsidian4.Notice(t("common.copy_failed"));
   } catch (e) {
-    new import_obsidian2.Notice(t("common.copy_failed"));
+    new import_obsidian4.Notice(t("common.copy_failed"));
   }
 }
 
 // src/linkSuggest.ts
-var import_obsidian3 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 var NoteLinkSuggest = class {
   constructor(app, input, onPick) {
     __publicField(this, "app");
@@ -661,9 +660,7 @@ var NoteLinkSuggest = class {
   render() {
     var _a, _b;
     if (!this.el) {
-      this.el = document.createElement("div");
-      this.el.className = "ai-link-suggest";
-      document.body.appendChild(this.el);
+      this.el = document.body.createDiv({ cls: "ai-link-suggest" });
     }
     this.el.empty();
     for (let i = 0; i < this.items.length; i++) {
@@ -673,7 +670,7 @@ var NoteLinkSuggest = class {
         attr: { "data-path": f.path }
       });
       const icon = item.createSpan({ cls: "ai-link-suggest-item-icon" });
-      (0, import_obsidian3.setIcon)(icon, "file-text");
+      (0, import_obsidian5.setIcon)(icon, "file-text");
       item.createSpan({ cls: "ai-link-suggest-item-name", text: f.basename });
       const parent = (_b = (_a = f.parent) == null ? void 0 : _a.path) != null ? _b : "";
       item.createSpan({ cls: "ai-link-suggest-item-path", text: parent });
@@ -684,7 +681,6 @@ var NoteLinkSuggest = class {
       });
     }
     const rect = this.input.getBoundingClientRect();
-    this.el.style.position = "fixed";
     this.el.style.left = rect.left + "px";
     this.el.style.width = Math.min(340, rect.width) + "px";
     const spaceAbove = rect.top - 8;
@@ -732,7 +728,7 @@ var NoteLinkSuggest = class {
 
 // src/views/chatView.ts
 var VIEW_TYPE_CHAT = "margin-chat";
-var ChatView = class extends import_obsidian4.ItemView {
+var ChatView = class extends import_obsidian6.ItemView {
   constructor(leaf, plugin) {
     super(leaf);
     __publicField(this, "plugin");
@@ -852,7 +848,7 @@ var ChatView = class extends import_obsidian4.ItemView {
       cls: "ai-chat-clear",
       attr: { type: "button", title: t("chat.new") }
     });
-    (0, import_obsidian4.setIcon)(newBtn, "plus");
+    (0, import_obsidian6.setIcon)(newBtn, "plus");
     newBtn.addEventListener("click", () => {
       this.histories.delete(this.noteKey);
       this.usageByNote.delete(this.noteKey);
@@ -877,11 +873,11 @@ var ChatView = class extends import_obsidian4.ItemView {
       cls: "ai-chat-send",
       text: t("common.send")
     });
-    sendBtn.addEventListener("click", () => this.send());
+    sendBtn.addEventListener("click", () => void this.send());
     this.inputEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        this.send();
+        void this.send();
       }
     });
     this.linkSuggest = new NoteLinkSuggest(
@@ -906,10 +902,10 @@ var ChatView = class extends import_obsidian4.ItemView {
         cls: "ai-msg-copy",
         attr: { type: "button", title: t("common.copy") }
       });
-      (0, import_obsidian4.setIcon)(copyBtn, "copy");
+      (0, import_obsidian6.setIcon)(copyBtn, "copy");
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        copyText(m.content);
+        void copyText(m.content);
       });
       if (m.role === "user") {
         const editBtn = bubble.createEl("button", {
@@ -934,7 +930,7 @@ var ChatView = class extends import_obsidian4.ItemView {
     if (!text || this.busy) return;
     const model = this.currentModel();
     if (!model) {
-      new import_obsidian4.Notice(t("common.no_model"));
+      new import_obsidian6.Notice(t("common.no_model"));
       return;
     }
     this.attachRefsFromText(text);
@@ -953,7 +949,7 @@ var ChatView = class extends import_obsidian4.ItemView {
       if (!name) continue;
       const f = this.resolveNote(name);
       if (!f) {
-        new import_obsidian4.Notice(tf("chat.note_not_found", { name }));
+        new import_obsidian6.Notice(tf("chat.note_not_found", { name }));
         continue;
       }
       if (!this.attachedNotes.some((x) => x.path === f.path)) {
@@ -984,12 +980,12 @@ var ChatView = class extends import_obsidian4.ItemView {
   autoAttachCurrentNote() {
     if (!this.noteKey || this.noteKey === "(\u65E0\u7B14\u8BB0)") return;
     const f = this.app.vault.getAbstractFileByPath(this.noteKey);
-    if (f instanceof import_obsidian4.TFile) this.attachNote(f);
+    if (f instanceof import_obsidian6.TFile) this.attachNote(f);
   }
   /** 解析 [[名称]]：wikilink/路径优先，其次按 basename 精确/模糊匹配（兜底） */
   resolveNote(name) {
     const direct = this.app.metadataCache.getFirstLinkpathDest(name, "") || this.app.vault.getAbstractFileByPath(name);
-    if (direct instanceof import_obsidian4.TFile) return direct;
+    if (direct instanceof import_obsidian6.TFile) return direct;
     const lower = name.toLowerCase();
     const files = this.app.vault.getMarkdownFiles();
     return files.find((f) => f.basename.toLowerCase() === lower) || files.find((f) => f.basename.toLowerCase().includes(lower)) || null;
@@ -1002,9 +998,6 @@ var ChatView = class extends import_obsidian4.ItemView {
    */
   async runAssistantTurn(model) {
     this.busy = true;
-    console.log(
-      "[Margin:chat] runAssistantTurn model=" + model.name + " noteKey=" + this.noteKey + " messages=" + this.messages.length
-    );
     let acc = "";
     const aiBubble = this.messagesEl.createDiv({ cls: "ai-msg ai-msg-model" });
     const roleEl = aiBubble.createEl("div", { cls: "ai-msg-role" });
@@ -1017,10 +1010,10 @@ var ChatView = class extends import_obsidian4.ItemView {
       cls: "ai-msg-copy",
       attr: { type: "button", title: t("common.copy") }
     });
-    (0, import_obsidian4.setIcon)(copyBtn, "copy");
+    (0, import_obsidian6.setIcon)(copyBtn, "copy");
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      copyText(acc);
+      void copyText(acc);
     });
     const provider = getProvider(model.provider);
     try {
@@ -1030,7 +1023,7 @@ var ChatView = class extends import_obsidian4.ItemView {
         const blocks = [];
         for (const n of this.attachedNotes) {
           const f = this.app.vault.getAbstractFileByPath(n.path);
-          if (!(f instanceof import_obsidian4.TFile)) continue;
+          if (!(f instanceof import_obsidian6.TFile)) continue;
           try {
             const content = await this.app.vault.cachedRead(f);
             blocks.push(`[[${n.basename}]]
@@ -1070,19 +1063,19 @@ ${blocks.join("\n\n---\n\n")}`;
           onError: (e) => {
             console.error("[Margin:chat] chat error", e);
             roleEl.setText("AI");
-            new import_obsidian4.Notice(t("common.error") + e.message);
+            new import_obsidian6.Notice(t("common.error") + e.message);
             contentEl.setText("\u26A0\uFE0F " + e.message);
             const retryBtn = aiBubble.createEl("button", {
               cls: "ai-msg-retry",
               attr: { type: "button", title: t("common.retry") }
             });
-            (0, import_obsidian4.setIcon)(retryBtn, "rotate-ccw");
-            retryBtn.addEventListener("click", async (ev) => {
+            (0, import_obsidian6.setIcon)(retryBtn, "rotate-ccw");
+            retryBtn.addEventListener("click", (ev) => {
               ev.stopPropagation();
               aiBubble.remove();
               const m = this.currentModel();
               if (!m) return;
-              await this.runAssistantTurn(m);
+              void this.runAssistantTurn(m);
             });
           }
         },
@@ -1121,7 +1114,7 @@ ${blocks.join("\n\n---\n\n")}`;
 };
 
 // src/selection/popover.ts
-var import_obsidian5 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 var Z_TOP = 2147483e3;
 var _SelectionPopover = class _SelectionPopover {
   constructor(plugin, editor, selected) {
@@ -1153,8 +1146,7 @@ var _SelectionPopover = class _SelectionPopover {
     (_a = _SelectionPopover.current) == null ? void 0 : _a.close();
     _SelectionPopover.current = this;
     this.noteKey = (_c = (_b = this.plugin.app.workspace.getActiveFile()) == null ? void 0 : _b.path) != null ? _c : "";
-    const root = document.createElement("div");
-    root.className = "ai-popover";
+    const root = document.body.createDiv({ cls: "ai-popover" });
     root.style.zIndex = String(Z_TOP);
     root.addEventListener("click", (e) => e.stopPropagation());
     const header = root.createDiv({ cls: "ai-popover-header" });
@@ -1165,7 +1157,7 @@ var _SelectionPopover = class _SelectionPopover {
       cls: "ai-popover-close",
       attr: { type: "button", title: t("common.close") }
     });
-    (0, import_obsidian5.setIcon)(close, "x");
+    (0, import_obsidian7.setIcon)(close, "x");
     close.addEventListener("click", (e) => {
       e.stopPropagation();
       this.close();
@@ -1192,11 +1184,11 @@ var _SelectionPopover = class _SelectionPopover {
       cls: "ai-popover-send",
       text: t("common.send")
     });
-    send.addEventListener("click", () => this.send());
+    send.addEventListener("click", () => void this.send());
     this.inputEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        this.send();
+        void this.send();
       }
     });
     this.linkSuggest = new NoteLinkSuggest(
@@ -1204,7 +1196,6 @@ var _SelectionPopover = class _SelectionPopover {
       this.inputEl,
       (file, m) => this.insertNoteRef(file, m)
     );
-    document.body.appendChild(root);
     this.root = root;
     this.renderMessages();
     this.renderActions();
@@ -1307,16 +1298,16 @@ var _SelectionPopover = class _SelectionPopover {
         cls: "ai-popover-btn",
         attr: { type: "button", title: label }
       });
-      (0, import_obsidian5.setIcon)(b, iconId);
+      (0, import_obsidian7.setIcon)(b, iconId);
       b.addEventListener("click", fn);
     };
     mk(t("popover.insert"), "corner-down-left", () => {
       this.editor.replaceRange(this.lastResult, this.editor.getCursor());
-      new import_obsidian5.Notice(t("popover.inserted"));
+      new import_obsidian7.Notice(t("popover.inserted"));
     });
     mk(t("popover.overwrite"), "refresh-cw", () => {
       this.editor.replaceRange(this.lastResult, this.from, this.to);
-      new import_obsidian5.Notice(t("popover.overwritten"));
+      new import_obsidian7.Notice(t("popover.overwritten"));
     });
   }
   renderMessages() {
@@ -1336,10 +1327,10 @@ var _SelectionPopover = class _SelectionPopover {
         cls: "ai-popover-msg-copy",
         attr: { type: "button", title: t("common.copy") }
       });
-      (0, import_obsidian5.setIcon)(copyBtn, "copy");
+      (0, import_obsidian7.setIcon)(copyBtn, "copy");
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        copyText(text);
+        void copyText(text);
       });
       if (m.role === "user") {
         const editBtn = bubble.createEl("button", {
@@ -1414,7 +1405,7 @@ var _SelectionPopover = class _SelectionPopover {
       if (!name) continue;
       const f = this.resolveNote(name);
       if (!f) {
-        new import_obsidian5.Notice(tf("chat.note_not_found", { name }));
+        new import_obsidian7.Notice(tf("chat.note_not_found", { name }));
         continue;
       }
       if (!this.attachedNotes.some((x) => x.path === f.path)) {
@@ -1445,7 +1436,7 @@ var _SelectionPopover = class _SelectionPopover {
   /** 解析 [[名称]]：wikilink/路径优先，其次按 basename 精确/模糊匹配（兜底） */
   resolveNote(name) {
     const direct = this.plugin.app.metadataCache.getFirstLinkpathDest(name, "") || this.plugin.app.vault.getAbstractFileByPath(name);
-    if (direct instanceof import_obsidian5.TFile) return direct;
+    if (direct instanceof import_obsidian7.TFile) return direct;
     const lower = name.toLowerCase();
     const files = this.plugin.app.vault.getMarkdownFiles();
     return files.find((f) => f.basename.toLowerCase() === lower) || files.find((f) => f.basename.toLowerCase().includes(lower)) || null;
@@ -1456,7 +1447,7 @@ var _SelectionPopover = class _SelectionPopover {
     if (!text || this.busy) return;
     const model = this.currentModel();
     if (!model) {
-      new import_obsidian5.Notice(t("common.no_model"));
+      new import_obsidian7.Notice(t("common.no_model"));
       return;
     }
     this.attachRefsFromText(text);
@@ -1486,9 +1477,6 @@ var _SelectionPopover = class _SelectionPopover {
    */
   async runAssistantTurn(model) {
     this.busy = true;
-    console.log(
-      "[Margin:popover] runAssistantTurn model=" + model.name + " messages=" + this.messages.length
-    );
     let acc = "";
     const aiBubble = this.messagesEl.createDiv({
       cls: "ai-popover-msg ai-popover-msg-model"
@@ -1503,10 +1491,10 @@ var _SelectionPopover = class _SelectionPopover {
       cls: "ai-popover-msg-copy",
       attr: { type: "button", title: t("common.copy") }
     });
-    (0, import_obsidian5.setIcon)(copyBtn, "copy");
+    (0, import_obsidian7.setIcon)(copyBtn, "copy");
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      copyText(acc);
+      void copyText(acc);
     });
     const provider = getProvider(model.provider);
     try {
@@ -1515,7 +1503,7 @@ var _SelectionPopover = class _SelectionPopover {
         const blocks = [];
         for (const n of this.attachedNotes) {
           const f = this.plugin.app.vault.getAbstractFileByPath(n.path);
-          if (!(f instanceof import_obsidian5.TFile)) continue;
+          if (!(f instanceof import_obsidian7.TFile)) continue;
           try {
             const content = await this.plugin.app.vault.cachedRead(f);
             blocks.push(`[[${n.basename}]]
@@ -1553,19 +1541,19 @@ ${blocks.join("\n\n---\n\n")}`;
           onError: (e) => {
             console.error("[Margin:popover] chat error", e);
             roleEl.setText("AI");
-            new import_obsidian5.Notice(t("common.error") + e.message);
+            new import_obsidian7.Notice(t("common.error") + e.message);
             contentEl.setText("\u26A0\uFE0F " + e.message);
             const retryBtn = aiBubble.createEl("button", {
               cls: "ai-popover-msg-retry",
               attr: { type: "button", title: t("common.retry") }
             });
-            (0, import_obsidian5.setIcon)(retryBtn, "rotate-ccw");
-            retryBtn.addEventListener("click", async (ev) => {
+            (0, import_obsidian7.setIcon)(retryBtn, "rotate-ccw");
+            retryBtn.addEventListener("click", (ev) => {
               ev.stopPropagation();
               aiBubble.remove();
               const m = this.currentModel();
               if (!m) return;
-              await this.runAssistantTurn(m);
+              void this.runAssistantTurn(m);
             });
           }
         },
@@ -1605,7 +1593,7 @@ __publicField(_SelectionPopover, "current");
 var SelectionPopover = _SelectionPopover;
 
 // src/main.ts
-var AIPlugin = class extends import_obsidian6.Plugin {
+var AIPlugin = class extends import_obsidian8.Plugin {
   async onload() {
     await this.loadSettings();
     setLang(
@@ -1613,12 +1601,12 @@ var AIPlugin = class extends import_obsidian6.Plugin {
     );
     this.registerView(VIEW_TYPE_CHAT, (leaf) => new ChatView(leaf, this));
     this.addRibbonIcon("message-square", t("cmd.open_chat"), () => {
-      this.activateChat();
+      void this.activateChat();
     });
     this.addCommand({
       id: "open-ai-chat",
       name: t("cmd.open_chat"),
-      callback: () => this.activateChat()
+      callback: () => void this.activateChat()
     });
     this.registerEvent(
       this.app.workspace.on(
@@ -1644,17 +1632,17 @@ var AIPlugin = class extends import_obsidian6.Plugin {
       id: "open-margin-popover",
       name: t("cmd.open_popover"),
       callback: () => {
-        let view = this.app.workspace.getActiveViewOfType(import_obsidian6.MarkdownView);
+        let view = this.app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView);
         if (!view) {
           for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
-            if (leaf.view instanceof import_obsidian6.MarkdownView) {
+            if (leaf.view instanceof import_obsidian8.MarkdownView) {
               view = leaf.view;
               break;
             }
           }
         }
         if (!view) {
-          new import_obsidian6.Notice(t("popover.no_note"));
+          new import_obsidian8.Notice(t("popover.no_note"));
           return;
         }
         new SelectionPopover(this, view.editor, view.editor.getSelection()).open();

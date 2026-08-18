@@ -2,8 +2,8 @@
   "id": "margin-ai-chat",
   "name": "Margin",
   "version": "0.1.023",
-  "minAppVersion": "1.7.0",
-  "description": "右侧对话 + 划词悬浮沟通，支持模型切换与用量查看，初期对接 Gemini，可扩展多模型。",
+  "minAppVersion": "1.7.2",
+  "description": "AI side chat and selection popover for Obsidian. Multi-model, streaming output, note association.",
   "author": "Garry",
   "authorUrl": "https://github.com/curryhendry",
   "isDesktopOnly": false

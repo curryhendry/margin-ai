@@ -2,6 +2,8 @@
 
 # Margin
 
+> Margin is an AI assistant plugin for Obsidian. It provides a side-panel chat and a selection popover: select any text, ask questions about it, and insert or overwrite the result with one click. It supports multiple models, streaming output, note association, and usage statistics.
+
 > Obsidian AI 插件：右侧对话 + 划词悬浮问答。基于选区提问，结果一键插入/覆盖；支持多模型、流式输出与用量统计。
 > 没有什么科技含量，单纯为极简使用AI
 

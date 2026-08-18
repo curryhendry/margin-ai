@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, Editor, Menu, Notice, MarkdownView } from "obsidian";
+import { Plugin, Editor, Menu, Notice, MarkdownView } from "obsidian";
 import {
   AIPluginSettings,
   DEFAULT_SETTINGS,
@@ -23,13 +23,13 @@ export default class AIPlugin extends Plugin {
     this.registerView(VIEW_TYPE_CHAT, (leaf) => new ChatView(leaf, this));
 
     this.addRibbonIcon("message-square", t("cmd.open_chat"), () => {
-      this.activateChat();
+      void this.activateChat();
     });
 
     this.addCommand({
       id: "open-ai-chat",
       name: t("cmd.open_chat"),
-      callback: () => this.activateChat(),
+      callback: () => void this.activateChat(),
     });
 
     // 划词：右键仅一个菜单项

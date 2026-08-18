@@ -141,7 +141,7 @@
 }
 .ai-msg-copy:hover,
 .ai-msg-edit:hover {
-  opacity: 1 !important;
+  opacity: 1;
   background: var(--background-modifier-hover, rgba(127, 127, 127, 0.2));
   color: var(--text-normal, #ddd);
 }
@@ -344,7 +344,7 @@
 }
 .ai-popover-msg-copy:hover,
 .ai-popover-msg-edit:hover {
-  opacity: 1 !important;
+  opacity: 1;
   background: var(--background-modifier-hover, rgba(127, 127, 127, 0.2));
   color: var(--text-normal, #ddd);
 }
@@ -637,6 +637,16 @@
   -webkit-user-select: text;
 }
 
+/* ---------- 复制兜底用的隐藏 textarea ---------- */
+.ai-copy-helper {
+  position: fixed;
+  top: 0;
+  left: -9999px;
+  width: 10px;
+  height: 10px;
+  opacity: 0;
+}
+
 /* ---------- [[ 笔记补全下拉 ---------- */
 .ai-link-suggest {
   position: fixed;
@@ -682,24 +692,24 @@
   max-width: 120px;
 }
 
-/* ---------- 图标按钮原生化：强制去掉 Obsidian button 默认边框/背景/阴影 ---------- */
-.ai-chat-clear,
-.ai-popover-close,
-.ai-popover-btn,
-.ai-msg-copy,
-.ai-msg-edit,
-.ai-popover-msg-copy,
-.ai-popover-msg-edit {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
+/* ---------- 图标按钮原生化：覆盖 Obsidian button 默认边框/背景/阴影（提高选择器特异性） ---------- */
+button.ai-chat-clear,
+button.ai-popover-close,
+button.ai-popover-btn,
+button.ai-msg-copy,
+button.ai-msg-edit,
+button.ai-popover-msg-copy,
+button.ai-popover-msg-edit {
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
-.ai-chat-clear:hover,
-.ai-popover-close:hover,
-.ai-popover-btn:hover,
-.ai-msg-copy:hover,
-.ai-msg-edit:hover,
-.ai-popover-msg-copy:hover,
-.ai-popover-msg-edit:hover {
-  background: var(--background-modifier-hover, rgba(127, 127, 127, 0.18)) !important;
+button.ai-chat-clear:hover,
+button.ai-popover-close:hover,
+button.ai-popover-btn:hover,
+button.ai-msg-copy:hover,
+button.ai-msg-edit:hover,
+button.ai-popover-msg-copy:hover,
+button.ai-popover-msg-edit:hover {
+  background: var(--background-modifier-hover, rgba(127, 127, 127, 0.18));
 }
