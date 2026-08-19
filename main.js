@@ -67,6 +67,7 @@ var GeminiProvider = class {
     return testGeminiModel(model);
   }
   async chat(model, messages, cb, opts) {
+    var _a, _b, _c, _d;
     const base = model.baseUrl || "https://generativelanguage.googleapis.com/v1beta";
     const url = `${base}/models/${encodeURIComponent(
       model.name
@@ -81,72 +82,97 @@ var GeminiProvider = class {
         parts: [{ text: opts.systemInstruction }]
       };
     }
-    return new Promise((resolve) => {
-      var _a;
+    let usage = null;
+    let emitted = false;
+    const handleDataJson = (json) => {
+      var _a2, _b2, _c2, _d2, _e, _f, _g, _h;
+      try {
+        const data = JSON.parse(json);
+        const piece = ((_d2 = (_c2 = (_b2 = (_a2 = data.candidates) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.content) == null ? void 0 : _c2.parts) == null ? void 0 : _d2.map((p) => p.text || "").join("")) || "";
+        if (piece) {
+          emitted = true;
+          (_e = cb.onToken) == null ? void 0 : _e.call(cb, piece);
+        }
+        if (data.usageMetadata) {
+          usage = {
+            promptTokens: (_f = data.usageMetadata.promptTokenCount) != null ? _f : 0,
+            completionTokens: (_g = data.usageMetadata.candidatesTokenCount) != null ? _g : 0,
+            totalTokens: (_h = data.usageMetadata.totalTokenCount) != null ? _h : 0
+          };
+        }
+      } catch (e) {
+      }
+    };
+    const feedSSELines = (lines) => {
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const json = trimmed.slice(5).trim();
+        if (!json || json === "[DONE]") continue;
+        handleDataJson(json);
+      }
+    };
+    const xhrResult = await new Promise((resolve) => {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", url);
       xhr.setRequestHeader("Content-Type", "application/json");
-      let usage = null;
       let buf = "";
       let lastLen = 0;
-      const parseChunk = () => {
-        var _a2, _b, _c, _d, _e, _f, _g, _h;
-        const text = xhr.responseText;
-        buf += text.slice(lastLen);
-        lastLen = text.length;
+      const drain = () => {
+        buf += xhr.responseText.slice(lastLen);
+        lastLen = xhr.responseText.length;
         const lines = buf.split("\n");
         buf = lines.pop() || "";
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith("data:")) continue;
-          const json = trimmed.slice(5).trim();
-          if (!json || json === "[DONE]") continue;
-          try {
-            const data = JSON.parse(json);
-            const piece = ((_d = (_c = (_b = (_a2 = data.candidates) == null ? void 0 : _a2[0]) == null ? void 0 : _b.content) == null ? void 0 : _c.parts) == null ? void 0 : _d.map((p) => p.text || "").join("")) || "";
-            if (piece) (_e = cb.onToken) == null ? void 0 : _e.call(cb, piece);
-            if (data.usageMetadata) {
-              usage = {
-                promptTokens: (_f = data.usageMetadata.promptTokenCount) != null ? _f : 0,
-                completionTokens: (_g = data.usageMetadata.candidatesTokenCount) != null ? _g : 0,
-                totalTokens: (_h = data.usageMetadata.totalTokenCount) != null ? _h : 0
-              };
-            }
-          } catch (e) {
-          }
-        }
+        feedSSELines(lines);
       };
-      xhr.onprogress = parseChunk;
+      xhr.onprogress = drain;
       xhr.onload = () => {
-        var _a2, _b;
-        parseChunk();
-        if (xhr.status >= 400) {
-          (_a2 = cb.onError) == null ? void 0 : _a2.call(
-            cb,
-            new Error(`Gemini API ${xhr.status}: ${(xhr.responseText || "").slice(0, 300)}`)
-          );
+        var _a2;
+        drain();
+        if (xhr.status < 400) {
+          (_a2 = cb.onDone) == null ? void 0 : _a2.call(cb, usage);
+          resolve({ ok: true });
         } else {
-          (_b = cb.onDone) == null ? void 0 : _b.call(cb, usage);
+          resolve({
+            ok: false,
+            error: `Gemini API ${xhr.status}: ${(xhr.responseText || "").slice(0, 300)}`
+          });
         }
-        resolve();
       };
-      xhr.onerror = () => {
-        var _a2;
-        (_a2 = cb.onError) == null ? void 0 : _a2.call(cb, new Error("\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25"));
-        resolve();
-      };
-      xhr.onabort = () => {
-        var _a2;
-        (_a2 = cb.onError) == null ? void 0 : _a2.call(cb, new Error("\u8BF7\u6C42\u5DF2\u4E2D\u65AD"));
-        resolve();
-      };
+      xhr.onerror = () => resolve({ ok: false, error: "\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25" });
+      xhr.onabort = () => resolve({ ok: false, error: "\u8BF7\u6C42\u5DF2\u4E2D\u65AD" });
       try {
         xhr.send(JSON.stringify(body));
       } catch (e) {
-        (_a = cb.onError) == null ? void 0 : _a.call(cb, new Error("\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25\uFF1A" + e.message));
-        resolve();
+        resolve({ ok: false, error: "\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25\uFF1A" + e.message });
       }
     });
+    if (xhrResult.ok) return;
+    if (emitted) {
+      (_a = cb.onError) == null ? void 0 : _a.call(cb, new Error(xhrResult.error || "\u8BF7\u6C42\u5931\u8D25"));
+      return;
+    }
+    try {
+      const r = await (0, import_obsidian.requestUrl)({
+        url,
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        throw: false
+      });
+      if (r.status >= 400) {
+        (_b = cb.onError) == null ? void 0 : _b.call(
+          cb,
+          new Error(`Gemini API ${r.status}: ${(r.text || "").slice(0, 300)}`)
+        );
+        return;
+      }
+      usage = null;
+      feedSSELines((r.text || "").split("\n"));
+      (_c = cb.onDone) == null ? void 0 : _c.call(cb, usage);
+    } catch (e) {
+      (_d = cb.onError) == null ? void 0 : _d.call(cb, new Error("\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25\uFF1A" + e.message));
+    }
   }
 };
 
@@ -564,21 +590,40 @@ function getProvider(id) {
 
 // src/util.ts
 var import_obsidian4 = require("obsidian");
+function readClipboard() {
+  try {
+    const electron = require("electron");
+    if (electron == null ? void 0 : electron.clipboard) return electron.clipboard.readText();
+  } catch (e) {
+  }
+  return "";
+}
 async function copyText(text) {
   try {
     const electron = require("electron");
     if (electron == null ? void 0 : electron.clipboard) {
       electron.clipboard.writeText(text);
-      new import_obsidian4.Notice(t("common.copied"));
-      return;
+      if (electron.clipboard.readText() === text) {
+        new import_obsidian4.Notice(t("common.copied"));
+        return;
+      }
     }
   } catch (e) {
   }
   if (navigator.clipboard && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(text);
-      new import_obsidian4.Notice(t("common.copied"));
-      return;
+      let ok = true;
+      try {
+        const got = await navigator.clipboard.readText();
+        ok = got === text;
+      } catch (e) {
+        ok = true;
+      }
+      if (ok) {
+        new import_obsidian4.Notice(t("common.copied"));
+        return;
+      }
     } catch (e) {
     }
   }
@@ -591,8 +636,8 @@ async function copyText(text) {
     ta.select();
     const ok = document.execCommand("copy");
     ta.remove();
-    if (ok) new import_obsidian4.Notice(t("common.copied"));
-    else new import_obsidian4.Notice(t("common.copy_failed"));
+    const verified = ok && readClipboard() === text;
+    new import_obsidian4.Notice(verified ? t("common.copied") : t("common.copy_failed"));
   } catch (e) {
     new import_obsidian4.Notice(t("common.copy_failed"));
   }
