@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import type AIPlugin from "./main";
 import { testGeminiModel } from "./llm/gemini";
-import { detectObsidianLang, setLang, t, tf, type Lang } from "./i18n";
+import { t, tf } from "./i18n";
 
 export type ProviderId = "gemini";
 
@@ -29,15 +29,12 @@ export interface AIPluginSettings {
   defaultModelId: string;
   /** 全局系统指令（可选） */
   systemInstruction: string;
-  /** 界面语言：auto=跟随 Obsidian */
-  language: "auto" | "zh" | "en";
 }
 
 export const DEFAULT_SETTINGS: AIPluginSettings = {
   models: [],
   defaultModelId: "",
   systemInstruction: "",
-  language: "auto",
 };
 
 /** 把 1048576 这类数字格式化成 1M / 8K，更易读 */
@@ -101,28 +98,9 @@ export class AISettingsTab extends PluginSettingTab {
 
     new Setting(containerEl).setName(t("settings.title")).setHeading();
 
-    this.renderLanguage(containerEl);
     this.renderAddModel(containerEl);
     this.renderModelList(containerEl);
     this.renderGeneral(containerEl);
-  }
-
-  /** 界面语言 */
-  private renderLanguage(containerEl: HTMLElement): void {
-    const card = containerEl.createDiv({ cls: "ai-set-card" });
-    new Setting(card)
-      .setName(t("settings.language"))
-      .addDropdown((d) => {
-        d.addOption("auto", t("settings.lang_auto"));
-        d.addOption("zh", t("settings.lang_zh"));
-        d.addOption("en", t("settings.lang_en"));
-        d.setValue(this.plugin.settings.language);
-        d.onChange((v) => {
-          this.plugin.settings.language = v as "auto" | "zh" | "en";
-          setLang(v === "auto" ? detectObsidianLang() : (v as Lang));
-          void this.plugin.saveSettings().then(() => this.display());
-        });
-      });
   }
 
   /** 添加模型 */

@@ -19,12 +19,8 @@ export default class AIPlugin extends Plugin {
 
   async onload(): Promise<void> {
     await this.loadSettings();
-    // 界面语言：设置优先，auto 则跟随 Obsidian
-    setLang(
-      this.settings.language === "auto"
-        ? detectObsidianLang()
-        : this.settings.language
-    );
+    // 界面语言：跟随 Obsidian 语言自动切换
+    setLang(detectObsidianLang());
 
     this.registerView(VIEW_TYPE_CHAT, (leaf) => new ChatView(leaf, this));
 

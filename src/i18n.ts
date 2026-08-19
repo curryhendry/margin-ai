@@ -74,11 +74,7 @@ const zh: Record<string, string> = {
   "settings.system_instruction_desc": "追加给模型的全局设定，例如“用简洁中文回答”",
   "settings.limit_context": "上下文 {n}",
   "settings.limit_output": "输出 {n}",
-  "settings.language": "界面语言",
-  "settings.lang_auto": "自动（跟随 Obsidian）",
-  "settings.lang_zh": "中文",
-  "settings.lang_en": "English",
-};
+  };
 
 const en: Record<string, string> = {
   "common.send": "Send",
@@ -146,11 +142,7 @@ const en: Record<string, string> = {
     "Global instructions appended to the model, e.g. \"answer in concise Chinese\"",
   "settings.limit_context": "Context {n}",
   "settings.limit_output": "Output {n}",
-  "settings.language": "Language",
-  "settings.lang_auto": "Auto (follow Obsidian)",
-  "settings.lang_zh": "中文",
-  "settings.lang_en": "English",
-};
+  };
 
 let lang: Lang = "zh";
 

@@ -219,11 +219,7 @@ var zh = {
   "settings.system_instruction": "\u7CFB\u7EDF\u6307\u4EE4\uFF08\u53EF\u9009\uFF09",
   "settings.system_instruction_desc": "\u8FFD\u52A0\u7ED9\u6A21\u578B\u7684\u5168\u5C40\u8BBE\u5B9A\uFF0C\u4F8B\u5982\u201C\u7528\u7B80\u6D01\u4E2D\u6587\u56DE\u7B54\u201D",
   "settings.limit_context": "\u4E0A\u4E0B\u6587 {n}",
-  "settings.limit_output": "\u8F93\u51FA {n}",
-  "settings.language": "\u754C\u9762\u8BED\u8A00",
-  "settings.lang_auto": "\u81EA\u52A8\uFF08\u8DDF\u968F Obsidian\uFF09",
-  "settings.lang_zh": "\u4E2D\u6587",
-  "settings.lang_en": "English"
+  "settings.limit_output": "\u8F93\u51FA {n}"
 };
 var en = {
   "common.send": "Send",
@@ -287,11 +283,7 @@ var en = {
   "settings.system_instruction": "System instruction (optional)",
   "settings.system_instruction_desc": 'Global instructions appended to the model, e.g. "answer in concise Chinese"',
   "settings.limit_context": "Context {n}",
-  "settings.limit_output": "Output {n}",
-  "settings.language": "Language",
-  "settings.lang_auto": "Auto (follow Obsidian)",
-  "settings.lang_zh": "\u4E2D\u6587",
-  "settings.lang_en": "English"
+  "settings.limit_output": "Output {n}"
 };
 var lang = "zh";
 function detectObsidianLang() {
@@ -320,8 +312,7 @@ function tf(key, params) {
 var DEFAULT_SETTINGS = {
   models: [],
   defaultModelId: "",
-  systemInstruction: "",
-  language: "auto"
+  systemInstruction: ""
 };
 function fmtLimit(n) {
   if (n == null) return "\u2014";
@@ -366,25 +357,9 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
     containerEl.empty();
     containerEl.addClass("ai-set");
     new import_obsidian3.Setting(containerEl).setName(t("settings.title")).setHeading();
-    this.renderLanguage(containerEl);
     this.renderAddModel(containerEl);
     this.renderModelList(containerEl);
     this.renderGeneral(containerEl);
-  }
-  /** 界面语言 */
-  renderLanguage(containerEl) {
-    const card = containerEl.createDiv({ cls: "ai-set-card" });
-    new import_obsidian3.Setting(card).setName(t("settings.language")).addDropdown((d) => {
-      d.addOption("auto", t("settings.lang_auto"));
-      d.addOption("zh", t("settings.lang_zh"));
-      d.addOption("en", t("settings.lang_en"));
-      d.setValue(this.plugin.settings.language);
-      d.onChange((v) => {
-        this.plugin.settings.language = v;
-        setLang(v === "auto" ? detectObsidianLang() : v);
-        void this.plugin.saveSettings().then(() => this.display());
-      });
-    });
   }
   /** 添加模型 */
   renderAddModel(containerEl) {
@@ -1616,9 +1591,7 @@ var SelectionPopover = _SelectionPopover;
 var AIPlugin = class extends import_obsidian8.Plugin {
   async onload() {
     await this.loadSettings();
-    setLang(
-      this.settings.language === "auto" ? detectObsidianLang() : this.settings.language
-    );
+    setLang(detectObsidianLang());
     this.registerView(VIEW_TYPE_CHAT, (leaf) => new ChatView(leaf, this));
     this.addRibbonIcon("message-square", t("cmd.open_chat"), () => {
       void this.activateChat();
