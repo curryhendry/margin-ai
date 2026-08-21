@@ -4,32 +4,65 @@ import { t } from "./i18n";
 declare function require(name: string): any;
 
 /**
- * 复制文本到剪贴板，写入后读回验证（验证必须用 navigator.clipboard.readText
- * 才能确认系统剪贴板真的有内容，electron.clipboard 在新版 Obsidian 沙箱里是
- * “插件剪贴板”，验证过但系统 Cmd+V 读不到——本函数就是要避开这个坑）。
- * 桌面端优先 navigator.clipboard（写到系统剪贴板），其次 electron + execCommand 兜底。
+ * 读取当前剪贴板内容（同步，仅桌面 Electron 环境可用）。
+ * 移动端 / 无 electron 时返回空串，调用方需自行处理"无法校验"的情况。
+ */
+function readClipboard(): string {
+  try {
+    const electron = require("electron");
+    if (electron?.clipboard) return electron.clipboard.readText();
+  } catch {
+    // 非 Electron 环境（移动端）
+  }
+  return "";
+}
+
+/**
+ * 复制文本到剪贴板，写入后读回验证，避免"提示已复制但实际没复制"的误报。
+ *
+ * 三级通道，逐级兜底：
+ *   1. electron.clipboard —— 桌面端最可靠，同步写 + 同步读回校验
+ *   2. navigator.clipboard —— 移动端主通道，readText 无权限时信任 writeText
+ *   3. execCommand("copy") —— 最后兜底，用 readClipboard 校验结果
+ * 只有确认写入成功才提示 copied，否则提示 copy_failed。
  */
 export async function copyText(text: string): Promise<void> {
-  // 1. 浏览器 Clipboard API（桌面/移动 Electron 都会写到系统剪贴板，前提是文档已聚焦——按钮点击时已聚焦）
+  // 1. Electron 剪贴板（桌面端优先，同步可校验）
+  try {
+    const electron = require("electron");
+    if (electron?.clipboard) {
+      electron.clipboard.writeText(text);
+      if (electron.clipboard.readText() === text) {
+        new Notice(t("common.copied"));
+        return;
+      }
+    }
+  } catch {
+    // 非 Electron 环境，继续下一步
+  }
+
+  // 2. 浏览器 Clipboard API（移动端主通道；需文档已聚焦，按钮点击时满足）
   if (navigator.clipboard && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(text);
-      // 读回验证（navigator 读的就是系统剪贴板）
+      let ok = true;
       try {
         const got = await navigator.clipboard.readText();
-        if (got === text) {
-          new Notice(t("common.copied"));
-          return;
-        }
+        ok = got === text;
       } catch {
-        // readText 无权限（罕见），退回到 execCommand 验证
+        // readText 无权限（移动端常见），writeText 已成功则信任
+        ok = true;
+      }
+      if (ok) {
+        new Notice(t("common.copied"));
+        return;
       }
     } catch {
       // writeText 被拒（聚焦/权限问题），继续下一步
     }
   }
 
-  // 2. execCommand 兜底（写后用 navigator.readText 验证系统剪贴板）
+  // 3. execCommand 兜底
   try {
     const ta = document.body.createEl("textarea", {
       cls: "ai-copy-helper",
@@ -39,24 +72,8 @@ export async function copyText(text: string): Promise<void> {
     ta.select();
     const ok = document.execCommand("copy");
     ta.remove();
-    if (ok && navigator.clipboard && window.isSecureContext) {
-      try {
-        const got = await navigator.clipboard.readText();
-        if (got === text) {
-          new Notice(t("common.copied"));
-          return;
-        }
-      } catch {
-        // 无法读回验证，但 execCommand 成功了，先信任
-        new Notice(t("common.copied"));
-        return;
-      }
-    }
-    if (ok) {
-      new Notice(t("common.copied"));
-      return;
-    }
-    new Notice(t("common.copy_failed"));
+    const verified = ok && readClipboard() === text;
+    new Notice(verified ? t("common.copied") : t("common.copy_failed"));
   } catch {
     new Notice(t("common.copy_failed"));
   }

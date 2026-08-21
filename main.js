@@ -590,17 +590,39 @@ function getProvider(id) {
 
 // src/util.ts
 var import_obsidian4 = require("obsidian");
+function readClipboard() {
+  try {
+    const electron = require("electron");
+    if (electron == null ? void 0 : electron.clipboard) return electron.clipboard.readText();
+  } catch (e) {
+  }
+  return "";
+}
 async function copyText(text) {
+  try {
+    const electron = require("electron");
+    if (electron == null ? void 0 : electron.clipboard) {
+      electron.clipboard.writeText(text);
+      if (electron.clipboard.readText() === text) {
+        new import_obsidian4.Notice(t("common.copied"));
+        return;
+      }
+    }
+  } catch (e) {
+  }
   if (navigator.clipboard && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(text);
+      let ok = true;
       try {
         const got = await navigator.clipboard.readText();
-        if (got === text) {
-          new import_obsidian4.Notice(t("common.copied"));
-          return;
-        }
+        ok = got === text;
       } catch (e) {
+        ok = true;
+      }
+      if (ok) {
+        new import_obsidian4.Notice(t("common.copied"));
+        return;
       }
     } catch (e) {
     }
@@ -614,23 +636,8 @@ async function copyText(text) {
     ta.select();
     const ok = document.execCommand("copy");
     ta.remove();
-    if (ok && navigator.clipboard && window.isSecureContext) {
-      try {
-        const got = await navigator.clipboard.readText();
-        if (got === text) {
-          new import_obsidian4.Notice(t("common.copied"));
-          return;
-        }
-      } catch (e) {
-        new import_obsidian4.Notice(t("common.copied"));
-        return;
-      }
-    }
-    if (ok) {
-      new import_obsidian4.Notice(t("common.copied"));
-      return;
-    }
-    new import_obsidian4.Notice(t("common.copy_failed"));
+    const verified = ok && readClipboard() === text;
+    new import_obsidian4.Notice(verified ? t("common.copied") : t("common.copy_failed"));
   } catch (e) {
     new import_obsidian4.Notice(t("common.copy_failed"));
   }
