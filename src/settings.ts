@@ -291,21 +291,9 @@ export class AISettingsTab extends PluginSettingTab {
     cancel.addEventListener("click", () => this.display());
   }
 
-  /** 默认模型下拉 + 系统指令 */
+  /** 系统指令 */
   private renderGeneral(containerEl: HTMLElement): void {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
-
-    new Setting(card)
-      .setName(t("settings.default_model"))
-      .setDesc(t("settings.default_model_desc"))
-      .addDropdown((d) => {
-        this.plugin.settings.models.forEach((m) => d.addOption(m.id, m.name));
-        d.setValue(this.plugin.settings.defaultModelId);
-        d.onChange((v) => {
-          this.plugin.settings.defaultModelId = v;
-          void this.plugin.saveSettings();
-        });
-      });
 
     new Setting(card)
       .setName(t("settings.system_instruction"))

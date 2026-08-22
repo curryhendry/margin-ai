@@ -34,17 +34,181 @@ var import_obsidian8 = require("obsidian");
 var import_obsidian3 = require("obsidian");
 
 // src/llm/gemini.ts
+var import_obsidian2 = require("obsidian");
+
+// src/i18n.ts
 var import_obsidian = require("obsidian");
+var zh = {
+  // common
+  "common.send": "\u53D1\u9001",
+  "common.you": "\u4F60",
+  "common.copy": "\u590D\u5236\u672C\u6761\u6D88\u606F",
+  "common.edit_resend": "\u7F16\u8F91\u5E76\u91CD\u53D1",
+  "common.remove_attach": "\u79FB\u9664\u5173\u8054",
+  "common.retry": "\u91CD\u65B0\u83B7\u53D6\u8FD9\u4E00\u8F6E\u56DE\u7B54",
+  "common.close": "\u5173\u95ED",
+  "common.no_model": "\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0\u6A21\u578B",
+  "common.no_model_selected": "\u672A\u9009\u6A21\u578B",
+  "common.error": "\u9519\u8BEF\uFF1A",
+  "common.copied": "\u5DF2\u590D\u5236",
+  "common.copy_failed": "\u590D\u5236\u5931\u8D25",
+  "gemini.location_blocked": "\u5F53\u524D\u7F51\u7EDC\u51FA\u53E3\u5730\u533A\u4E0D\u88AB Gemini \u652F\u6301\uFF08\u5982\u9999\u6E2F\uFF09\u3002\u8BF7\u5C06\u4EE3\u7406\u8282\u70B9\u5207\u6362\u5230\u7F8E\u56FD\u3001\u65E5\u672C\u3001\u65B0\u52A0\u5761\u3001\u53F0\u6E7E\u7B49\u652F\u6301\u5730\u533A\u540E\u91CD\u8BD5\u3002",
+  // commands
+  "cmd.open_chat": "\u6253\u5F00 AI Chat",
+  "cmd.open_popover": "\u6253\u5F00 Margin \u60AC\u6D6E\u5BF9\u8BDD",
+  // chat
+  "chat.new": "\u65B0\u5BF9\u8BDD",
+  "chat.placeholder": "\u8F93\u5165\u6D88\u606F\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C",
+  "chat.note_not_found": "\u672A\u627E\u5230\u7B14\u8BB0\uFF1A{name}",
+  "chat.this_usage": "\u672C\u6B21 {prompt}+{completion}={total}",
+  "chat.session_usage": "\u4F1A\u8BDD\u7D2F\u8BA1 {prompt}+{completion}={total} tokens \xB7 {tail}",
+  "chat.attached_notes": "\u5173\u8054\u7B14\u8BB0",
+  // popover
+  "popover.no_note": "\u5F53\u524D\u6CA1\u6709\u6253\u5F00\u7684\u7B14\u8BB0",
+  "popover.selection": "\u9009\u533A",
+  "popover.placeholder_sel": "\u57FA\u4E8E\u9009\u533A\u63D0\u95EE\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C",
+  "popover.placeholder": "\u8F93\u5165\u95EE\u9898\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C",
+  "popover.insert": "\u63D2\u5165\u5149\u6807",
+  "popover.overwrite": "\u8986\u76D6\u9009\u533A",
+  "popover.inserted": "\u5DF2\u63D2\u5165\u5230\u5149\u6807\u5904",
+  "popover.overwritten": "\u5DF2\u8986\u76D6\u9009\u533A",
+  "popover.ask_marker": "\u8BF7\u57FA\u4E8E\u4E0A\u8FF0\u6587\u672C\u56DE\u7B54\u6211\u7684\u95EE\u9898\uFF1A",
+  "popover.selection_label": "\u57FA\u4E8E\u9009\u533A\uFF1A",
+  "popover.ask_prompt": '\u4EE5\u4E0B\u662F\u9009\u4E2D\u7684\u6587\u672C\uFF1A\n"""\n{selection}\n"""\n\n\u8BF7\u57FA\u4E8E\u4E0A\u8FF0\u6587\u672C\u56DE\u7B54\u6211\u7684\u95EE\u9898\uFF1A{question}',
+  "popover.this_usage": "\u672C\u6B21 \u63D0\u793A {prompt} \xB7 \u8865\u5168 {completion} \xB7 \u603B\u8BA1 {total}",
+  // settings
+  "settings.title": "Margin \u8BBE\u7F6E",
+  "settings.eye": "\u663E\u793A / \u9690\u85CF",
+  "settings.api_key": "API Key",
+  "settings.add_model": "\u6DFB\u52A0\u6A21\u578B",
+  "settings.add_hint": "\u6A21\u578B\u540D\u79F0\u586B\u4F60\u60F3\u8981\u7684\u578B\u53F7\uFF08\u5982 gemini-3.5-flash\uFF09\uFF0CAPI Key \u4ECE Google AI Studio \u83B7\u53D6\u3002\u53EF\u6DFB\u52A0\u591A\u4E2A\u5E76\u968F\u65F6\u5207\u6362\u3002",
+  "settings.model_name_placeholder": "\u6A21\u578B\u540D\u79F0\uFF0C\u5982 gemini-3.5-flash",
+  "settings.need_name_key": "\u8BF7\u586B\u5199\u6A21\u578B\u540D\u79F0\u548C API Key",
+  "settings.models": "\u5DF2\u6DFB\u52A0\u6A21\u578B",
+  "settings.empty": "\u8FD8\u6CA1\u6709\u6A21\u578B\uFF0C\u5148\u5728\u4E0A\u65B9\u6DFB\u52A0\u3002",
+  "settings.untested": "\u672A\u6D4B\u8BD5",
+  "settings.set_default": "\u8BBE\u4E3A\u9ED8\u8BA4",
+  "settings.is_default": "\u9ED8\u8BA4 \u2713",
+  "settings.test": "\u6D4B\u8BD5",
+  "settings.testing": "\u6D4B\u8BD5\u4E2D\u2026",
+  "settings.test_ok": "\u2713 {name} \u8FDE\u63A5\u6210\u529F \xB7 {limits}",
+  "settings.no_limits": "\u65E0\u9650\u989D\u4FE1\u606F",
+  "settings.test_fail_prefix": "\u2717 \u6D4B\u8BD5\u5931\u8D25\uFF1A",
+  "settings.unknown_error": "\u672A\u77E5\u9519\u8BEF",
+  "settings.edit": "\u4FEE\u6539",
+  "settings.delete": "\u5220\u9664",
+  "settings.model_name": "\u6A21\u578B\u540D\u79F0",
+  "settings.base_url_placeholder": "base URL\uFF08\u53EF\u9009\uFF0C\u4EE3\u7406 / \u7F51\u5173\u7528\uFF09",
+  "settings.save": "\u4FDD\u5B58",
+  "settings.cancel": "\u53D6\u6D88",
+  "settings.system_instruction": "\u7CFB\u7EDF\u6307\u4EE4\uFF08\u53EF\u9009\uFF09",
+  "settings.system_instruction_desc": "\u8FFD\u52A0\u7ED9\u6A21\u578B\u7684\u5168\u5C40\u8BBE\u5B9A\uFF0C\u4F8B\u5982\u201C\u7528\u7B80\u6D01\u4E2D\u6587\u56DE\u7B54\u201D",
+  "settings.limit_context": "\u4E0A\u4E0B\u6587 {n}",
+  "settings.limit_output": "\u8F93\u51FA {n}"
+};
+var en = {
+  "common.send": "Send",
+  "common.you": "You",
+  "common.copy": "Copy message",
+  "common.edit_resend": "Edit & resend",
+  "common.remove_attach": "Remove",
+  "common.retry": "Retry this turn",
+  "common.close": "Close",
+  "common.no_model": "Please add a model in settings first",
+  "common.no_model_selected": "No model",
+  "common.error": "Error: ",
+  "common.copied": "Copied",
+  "common.copy_failed": "Copy failed",
+  "gemini.location_blocked": "Your current network region is not supported by Gemini (e.g. Hong Kong). Switch your proxy node to a supported region (US/JP/SG/TW) and retry.",
+  "cmd.open_chat": "Open AI Chat",
+  "cmd.open_popover": "Open Margin Popover",
+  "chat.new": "New chat",
+  "chat.placeholder": "Type a message, Enter to send, Shift+Enter for newline",
+  "chat.note_not_found": "Note not found: {name}",
+  "chat.this_usage": "This: {prompt}+{completion}={total}",
+  "chat.session_usage": "Session {prompt}+{completion}={total} tokens \xB7 {tail}",
+  "chat.attached_notes": "Attached notes",
+  "popover.no_note": "No note is open",
+  "popover.selection": "Selection",
+  "popover.placeholder_sel": "Ask about the selection, Enter to send",
+  "popover.placeholder": "Type a question, Enter to send",
+  "popover.insert": "Insert at cursor",
+  "popover.overwrite": "Overwrite selection",
+  "popover.inserted": "Inserted at cursor",
+  "popover.overwritten": "Selection overwritten",
+  "popover.ask_marker": "Please answer my question based on the text above:",
+  "popover.selection_label": "Based on selection: ",
+  "popover.ask_prompt": 'Here is the selected text:\n"""\n{selection}\n"""\n\nPlease answer my question based on the text above: {question}',
+  "popover.this_usage": "This: prompt {prompt} \xB7 completion {completion} \xB7 total {total}",
+  "settings.title": "Margin Settings",
+  "settings.eye": "Show / Hide",
+  "settings.api_key": "API Key",
+  "settings.add_model": "Add model",
+  "settings.add_hint": "Enter the model name (e.g. gemini-3.5-flash) and an API key from Google AI Studio. You can add multiple models and switch anytime.",
+  "settings.model_name_placeholder": "Model name, e.g. gemini-3.5-flash",
+  "settings.need_name_key": "Please fill in model name and API key",
+  "settings.models": "Added models",
+  "settings.empty": "No models yet. Add one above.",
+  "settings.untested": "Not tested",
+  "settings.set_default": "Set default",
+  "settings.is_default": "Default \u2713",
+  "settings.test": "Test",
+  "settings.testing": "Testing\u2026",
+  "settings.test_ok": "\u2713 {name} connected \xB7 {limits}",
+  "settings.no_limits": "No limit info",
+  "settings.test_fail_prefix": "\u2717 Test failed: ",
+  "settings.unknown_error": "Unknown error",
+  "settings.edit": "Edit",
+  "settings.delete": "Delete",
+  "settings.model_name": "Model name",
+  "settings.base_url_placeholder": "base URL (optional, for proxy/gateway)",
+  "settings.save": "Save",
+  "settings.cancel": "Cancel",
+  "settings.system_instruction": "System instruction (optional)",
+  "settings.system_instruction_desc": 'Global instructions appended to the model, e.g. "answer in concise Chinese"',
+  "settings.limit_context": "Context {n}",
+  "settings.limit_output": "Output {n}"
+};
+var lang = "zh";
+function detectObsidianLang() {
+  try {
+    if ((0, import_obsidian.getLanguage)().startsWith("zh")) return "zh";
+  } catch (e) {
+  }
+  return "en";
+}
+function setLang(l) {
+  lang = l;
+}
+function t(key) {
+  var _a;
+  return (_a = lang === "zh" ? zh[key] : en[key]) != null ? _a : key;
+}
+function tf(key, params) {
+  let s = t(key);
+  for (const [k, v] of Object.entries(params)) {
+    s = s.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
+  }
+  return s;
+}
+
+// src/llm/gemini.ts
+function friendlyError(status, body) {
+  if (body.includes("User location is not supported")) {
+    return t("gemini.location_blocked");
+  }
+  return `Gemini API ${status}: ${body.slice(0, 300)}`;
+}
 async function testGeminiModel(model) {
   const base = model.baseUrl || "https://generativelanguage.googleapis.com/v1beta";
   const url = `${base}/models/${encodeURIComponent(
     model.name
   )}?key=${model.apiKey}`;
   try {
-    const r = await (0, import_obsidian.requestUrl)({ url, throw: false });
+    const r = await (0, import_obsidian2.requestUrl)({ url, throw: false });
     if (r.status >= 400) {
-      const t2 = r.text || "";
-      return { ok: false, error: `HTTP ${r.status}: ${t2.slice(0, 200)}` };
+      const b = r.text || "";
+      return { ok: false, error: friendlyError(r.status, b) };
     }
     const j = r.json;
     const meta = {};
@@ -135,7 +299,7 @@ var GeminiProvider = class {
         } else {
           resolve({
             ok: false,
-            error: `Gemini API ${xhr.status}: ${(xhr.responseText || "").slice(0, 300)}`
+            error: friendlyError(xhr.status, xhr.responseText || "")
           });
         }
       };
@@ -153,7 +317,7 @@ var GeminiProvider = class {
       return;
     }
     try {
-      const r = await (0, import_obsidian.requestUrl)({
+      const r = await (0, import_obsidian2.requestUrl)({
         url,
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -161,10 +325,7 @@ var GeminiProvider = class {
         throw: false
       });
       if (r.status >= 400) {
-        (_b = cb.onError) == null ? void 0 : _b.call(
-          cb,
-          new Error(`Gemini API ${r.status}: ${(r.text || "").slice(0, 300)}`)
-        );
+        (_b = cb.onError) == null ? void 0 : _b.call(cb, new Error(friendlyError(r.status, r.text || "")));
         return;
       }
       usage = null;
@@ -175,164 +336,6 @@ var GeminiProvider = class {
     }
   }
 };
-
-// src/i18n.ts
-var import_obsidian2 = require("obsidian");
-var zh = {
-  // common
-  "common.send": "\u53D1\u9001",
-  "common.you": "\u4F60",
-  "common.copy": "\u590D\u5236\u672C\u6761\u6D88\u606F",
-  "common.edit_resend": "\u7F16\u8F91\u5E76\u91CD\u53D1",
-  "common.remove_attach": "\u79FB\u9664\u5173\u8054",
-  "common.retry": "\u91CD\u65B0\u83B7\u53D6\u8FD9\u4E00\u8F6E\u56DE\u7B54",
-  "common.close": "\u5173\u95ED",
-  "common.no_model": "\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0\u6A21\u578B",
-  "common.no_model_selected": "\u672A\u9009\u6A21\u578B",
-  "common.error": "\u9519\u8BEF\uFF1A",
-  "common.copied": "\u5DF2\u590D\u5236",
-  "common.copy_failed": "\u590D\u5236\u5931\u8D25",
-  // commands
-  "cmd.open_chat": "\u6253\u5F00 AI Chat",
-  "cmd.open_popover": "\u6253\u5F00 Margin \u60AC\u6D6E\u5BF9\u8BDD",
-  // chat
-  "chat.new": "\u65B0\u5BF9\u8BDD",
-  "chat.placeholder": "\u8F93\u5165\u6D88\u606F\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C",
-  "chat.note_not_found": "\u672A\u627E\u5230\u7B14\u8BB0\uFF1A{name}",
-  "chat.this_usage": "\u672C\u6B21 {prompt}+{completion}={total}",
-  "chat.session_usage": "\u4F1A\u8BDD\u7D2F\u8BA1 {prompt}+{completion}={total} tokens \xB7 {tail}",
-  "chat.attached_notes": "\u5173\u8054\u7B14\u8BB0",
-  // popover
-  "popover.no_note": "\u5F53\u524D\u6CA1\u6709\u6253\u5F00\u7684\u7B14\u8BB0",
-  "popover.selection": "\u9009\u533A",
-  "popover.placeholder_sel": "\u57FA\u4E8E\u9009\u533A\u63D0\u95EE\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C",
-  "popover.placeholder": "\u8F93\u5165\u95EE\u9898\uFF0CEnter \u53D1\u9001\uFF0CShift+Enter \u6362\u884C",
-  "popover.insert": "\u63D2\u5165\u5149\u6807",
-  "popover.overwrite": "\u8986\u76D6\u9009\u533A",
-  "popover.inserted": "\u5DF2\u63D2\u5165\u5230\u5149\u6807\u5904",
-  "popover.overwritten": "\u5DF2\u8986\u76D6\u9009\u533A",
-  "popover.ask_marker": "\u8BF7\u57FA\u4E8E\u4E0A\u8FF0\u6587\u672C\u56DE\u7B54\u6211\u7684\u95EE\u9898\uFF1A",
-  "popover.selection_label": "\u57FA\u4E8E\u9009\u533A\uFF1A",
-  "popover.ask_prompt": '\u4EE5\u4E0B\u662F\u9009\u4E2D\u7684\u6587\u672C\uFF1A\n"""\n{selection}\n"""\n\n\u8BF7\u57FA\u4E8E\u4E0A\u8FF0\u6587\u672C\u56DE\u7B54\u6211\u7684\u95EE\u9898\uFF1A{question}',
-  "popover.this_usage": "\u672C\u6B21 \u63D0\u793A {prompt} \xB7 \u8865\u5168 {completion} \xB7 \u603B\u8BA1 {total}",
-  // settings
-  "settings.title": "Margin \u8BBE\u7F6E",
-  "settings.eye": "\u663E\u793A / \u9690\u85CF",
-  "settings.api_key": "API Key",
-  "settings.add_model": "\u6DFB\u52A0\u6A21\u578B",
-  "settings.add_hint": "\u6A21\u578B\u540D\u79F0\u586B\u4F60\u60F3\u8981\u7684\u578B\u53F7\uFF08\u5982 gemini-3.5-flash\uFF09\uFF0CAPI Key \u4ECE Google AI Studio \u83B7\u53D6\u3002\u53EF\u6DFB\u52A0\u591A\u4E2A\u5E76\u968F\u65F6\u5207\u6362\u3002",
-  "settings.model_name_placeholder": "\u6A21\u578B\u540D\u79F0\uFF0C\u5982 gemini-3.5-flash",
-  "settings.need_name_key": "\u8BF7\u586B\u5199\u6A21\u578B\u540D\u79F0\u548C API Key",
-  "settings.models": "\u5DF2\u6DFB\u52A0\u6A21\u578B",
-  "settings.empty": "\u8FD8\u6CA1\u6709\u6A21\u578B\uFF0C\u5148\u5728\u4E0A\u65B9\u6DFB\u52A0\u3002",
-  "settings.untested": "\u672A\u6D4B\u8BD5",
-  "settings.set_default": "\u8BBE\u4E3A\u9ED8\u8BA4",
-  "settings.is_default": "\u9ED8\u8BA4 \u2713",
-  "settings.test": "\u6D4B\u8BD5",
-  "settings.testing": "\u6D4B\u8BD5\u4E2D\u2026",
-  "settings.test_ok": "\u2713 {name} \u8FDE\u63A5\u6210\u529F \xB7 {limits}",
-  "settings.no_limits": "\u65E0\u9650\u989D\u4FE1\u606F",
-  "settings.test_fail_prefix": "\u2717 \u6D4B\u8BD5\u5931\u8D25\uFF1A",
-  "settings.unknown_error": "\u672A\u77E5\u9519\u8BEF",
-  "settings.edit": "\u4FEE\u6539",
-  "settings.delete": "\u5220\u9664",
-  "settings.model_name": "\u6A21\u578B\u540D\u79F0",
-  "settings.base_url_placeholder": "base URL\uFF08\u53EF\u9009\uFF0C\u4EE3\u7406 / \u7F51\u5173\u7528\uFF09",
-  "settings.save": "\u4FDD\u5B58",
-  "settings.cancel": "\u53D6\u6D88",
-  "settings.default_model": "\u9ED8\u8BA4\u6A21\u578B",
-  "settings.default_model_desc": "\u65B0\u5BF9\u8BDD / \u5212\u8BCD\u4F7F\u7528\u7684\u9ED8\u8BA4\u6A21\u578B",
-  "settings.system_instruction": "\u7CFB\u7EDF\u6307\u4EE4\uFF08\u53EF\u9009\uFF09",
-  "settings.system_instruction_desc": "\u8FFD\u52A0\u7ED9\u6A21\u578B\u7684\u5168\u5C40\u8BBE\u5B9A\uFF0C\u4F8B\u5982\u201C\u7528\u7B80\u6D01\u4E2D\u6587\u56DE\u7B54\u201D",
-  "settings.limit_context": "\u4E0A\u4E0B\u6587 {n}",
-  "settings.limit_output": "\u8F93\u51FA {n}"
-};
-var en = {
-  "common.send": "Send",
-  "common.you": "You",
-  "common.copy": "Copy message",
-  "common.edit_resend": "Edit & resend",
-  "common.remove_attach": "Remove",
-  "common.retry": "Retry this turn",
-  "common.close": "Close",
-  "common.no_model": "Please add a model in settings first",
-  "common.no_model_selected": "No model",
-  "common.error": "Error: ",
-  "common.copied": "Copied",
-  "common.copy_failed": "Copy failed",
-  "cmd.open_chat": "Open AI Chat",
-  "cmd.open_popover": "Open Margin Popover",
-  "chat.new": "New chat",
-  "chat.placeholder": "Type a message, Enter to send, Shift+Enter for newline",
-  "chat.note_not_found": "Note not found: {name}",
-  "chat.this_usage": "This: {prompt}+{completion}={total}",
-  "chat.session_usage": "Session {prompt}+{completion}={total} tokens \xB7 {tail}",
-  "chat.attached_notes": "Attached notes",
-  "popover.no_note": "No note is open",
-  "popover.selection": "Selection",
-  "popover.placeholder_sel": "Ask about the selection, Enter to send",
-  "popover.placeholder": "Type a question, Enter to send",
-  "popover.insert": "Insert at cursor",
-  "popover.overwrite": "Overwrite selection",
-  "popover.inserted": "Inserted at cursor",
-  "popover.overwritten": "Selection overwritten",
-  "popover.ask_marker": "Please answer my question based on the text above:",
-  "popover.selection_label": "Based on selection: ",
-  "popover.ask_prompt": 'Here is the selected text:\n"""\n{selection}\n"""\n\nPlease answer my question based on the text above: {question}',
-  "popover.this_usage": "This: prompt {prompt} \xB7 completion {completion} \xB7 total {total}",
-  "settings.title": "Margin Settings",
-  "settings.eye": "Show / Hide",
-  "settings.api_key": "API Key",
-  "settings.add_model": "Add model",
-  "settings.add_hint": "Enter the model name (e.g. gemini-3.5-flash) and an API key from Google AI Studio. You can add multiple models and switch anytime.",
-  "settings.model_name_placeholder": "Model name, e.g. gemini-3.5-flash",
-  "settings.need_name_key": "Please fill in model name and API key",
-  "settings.models": "Added models",
-  "settings.empty": "No models yet. Add one above.",
-  "settings.untested": "Not tested",
-  "settings.set_default": "Set default",
-  "settings.is_default": "Default \u2713",
-  "settings.test": "Test",
-  "settings.testing": "Testing\u2026",
-  "settings.test_ok": "\u2713 {name} connected \xB7 {limits}",
-  "settings.no_limits": "No limit info",
-  "settings.test_fail_prefix": "\u2717 Test failed: ",
-  "settings.unknown_error": "Unknown error",
-  "settings.edit": "Edit",
-  "settings.delete": "Delete",
-  "settings.model_name": "Model name",
-  "settings.base_url_placeholder": "base URL (optional, for proxy/gateway)",
-  "settings.save": "Save",
-  "settings.cancel": "Cancel",
-  "settings.default_model": "Default model",
-  "settings.default_model_desc": "The model used for new chats and the selection popover",
-  "settings.system_instruction": "System instruction (optional)",
-  "settings.system_instruction_desc": 'Global instructions appended to the model, e.g. "answer in concise Chinese"',
-  "settings.limit_context": "Context {n}",
-  "settings.limit_output": "Output {n}"
-};
-var lang = "zh";
-function detectObsidianLang() {
-  try {
-    if ((0, import_obsidian2.getLanguage)().startsWith("zh")) return "zh";
-  } catch (e) {
-  }
-  return "en";
-}
-function setLang(l) {
-  lang = l;
-}
-function t(key) {
-  var _a;
-  return (_a = lang === "zh" ? zh[key] : en[key]) != null ? _a : key;
-}
-function tf(key, params) {
-  let s = t(key);
-  for (const [k, v] of Object.entries(params)) {
-    s = s.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
-  }
-  return s;
-}
 
 // src/settings.ts
 var DEFAULT_SETTINGS = {
@@ -554,17 +557,9 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
     });
     cancel.addEventListener("click", () => this.display());
   }
-  /** 默认模型下拉 + 系统指令 */
+  /** 系统指令 */
   renderGeneral(containerEl) {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
-    new import_obsidian3.Setting(card).setName(t("settings.default_model")).setDesc(t("settings.default_model_desc")).addDropdown((d) => {
-      this.plugin.settings.models.forEach((m) => d.addOption(m.id, m.name));
-      d.setValue(this.plugin.settings.defaultModelId);
-      d.onChange((v) => {
-        this.plugin.settings.defaultModelId = v;
-        void this.plugin.saveSettings();
-      });
-    });
     new import_obsidian3.Setting(card).setName(t("settings.system_instruction")).setDesc(t("settings.system_instruction_desc")).addTextArea((ta) => {
       ta.setValue(this.plugin.settings.systemInstruction);
       ta.onChange((v) => {
@@ -590,43 +585,26 @@ function getProvider(id) {
 
 // src/util.ts
 var import_obsidian4 = require("obsidian");
-function readClipboard() {
+function electronClipboard() {
+  var _a;
   try {
     const electron = require("electron");
-    if (electron == null ? void 0 : electron.clipboard) return electron.clipboard.readText();
+    return (_a = electron == null ? void 0 : electron.clipboard) != null ? _a : null;
   } catch (e) {
+    return null;
   }
-  return "";
 }
-async function copyText(text) {
+async function copyViaNavigator(text) {
   try {
-    const electron = require("electron");
-    if (electron == null ? void 0 : electron.clipboard) {
-      electron.clipboard.writeText(text);
-      if (electron.clipboard.readText() === text) {
-        new import_obsidian4.Notice(t("common.copied"));
-        return;
-      }
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
     }
   } catch (e) {
   }
-  if (navigator.clipboard && window.isSecureContext) {
-    try {
-      await navigator.clipboard.writeText(text);
-      let ok = true;
-      try {
-        const got = await navigator.clipboard.readText();
-        ok = got === text;
-      } catch (e) {
-        ok = true;
-      }
-      if (ok) {
-        new import_obsidian4.Notice(t("common.copied"));
-        return;
-      }
-    } catch (e) {
-    }
-  }
+  return false;
+}
+function copyViaExecCommand(text) {
   try {
     const ta = document.body.createEl("textarea", {
       cls: "ai-copy-helper"
@@ -636,11 +614,40 @@ async function copyText(text) {
     ta.select();
     const ok = document.execCommand("copy");
     ta.remove();
-    const verified = ok && readClipboard() === text;
-    new import_obsidian4.Notice(verified ? t("common.copied") : t("common.copy_failed"));
+    return ok;
   } catch (e) {
-    new import_obsidian4.Notice(t("common.copy_failed"));
+    return false;
   }
+}
+async function copyText(text) {
+  if (import_obsidian4.Platform.isDesktop) {
+    const cb = electronClipboard();
+    if (cb) {
+      try {
+        cb.writeText(text);
+        if (cb.readText() === text) {
+          new import_obsidian4.Notice(t("common.copied"));
+          return;
+        }
+      } catch (e) {
+      }
+    }
+    if (copyViaExecCommand(text)) {
+      new import_obsidian4.Notice(t("common.copied"));
+      return;
+    }
+    new import_obsidian4.Notice(t("common.copy_failed"));
+    return;
+  }
+  if (await copyViaNavigator(text)) {
+    new import_obsidian4.Notice(t("common.copied"));
+    return;
+  }
+  if (copyViaExecCommand(text)) {
+    new import_obsidian4.Notice(t("common.copied"));
+    return;
+  }
+  new import_obsidian4.Notice(t("common.copy_failed"));
 }
 
 // src/linkSuggest.ts

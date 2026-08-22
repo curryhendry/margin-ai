@@ -1,5 +1,6 @@
 import { requestUrl } from "obsidian";
 import type { AIModel } from "../settings";
+import { t } from "../i18n";
 import {
   ChatMessage,
   StreamCallbacks,
@@ -18,6 +19,14 @@ interface GeminiChunk {
     candidatesTokenCount?: number;
     totalTokenCount?: number;
   };
+}
+
+/** 识别 Gemini 区域封锁错误，返回可读中文提示；其他错误原样返回 */
+function friendlyError(status: number, body: string): string {
+  if (body.includes("User location is not supported")) {
+    return t("gemini.location_blocked");
+  }
+  return `Gemini API ${status}: ${body.slice(0, 300)}`;
 }
 
 /**
@@ -39,8 +48,8 @@ export async function testGeminiModel(model: AIModel): Promise<TestResult> {
   try {
     const r = await requestUrl({ url, throw: false });
     if (r.status >= 400) {
-      const t = r.text || "";
-      return { ok: false, error: `HTTP ${r.status}: ${t.slice(0, 200)}` };
+      const b = r.text || "";
+      return { ok: false, error: friendlyError(r.status, b) };
     }
     const j = r.json as Partial<{
       inputTokenLimit?: number;
@@ -153,7 +162,7 @@ export class GeminiProvider implements LLMProvider {
         } else {
           resolve({
             ok: false,
-            error: `Gemini API ${xhr.status}: ${(xhr.responseText || "").slice(0, 300)}`,
+            error: friendlyError(xhr.status, xhr.responseText || ""),
           });
         }
       };
@@ -183,9 +192,7 @@ export class GeminiProvider implements LLMProvider {
         throw: false,
       });
       if (r.status >= 400) {
-        cb.onError?.(
-          new Error(`Gemini API ${r.status}: ${(r.text || "").slice(0, 300)}`)
-        );
+        cb.onError?.(new Error(friendlyError(r.status, r.text || "")));
         return;
       }
       usage = null;

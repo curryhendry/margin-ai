@@ -18,6 +18,8 @@ const zh: Record<string, string> = {
   "common.error": "错误：",
   "common.copied": "已复制",
   "common.copy_failed": "复制失败",
+  "gemini.location_blocked":
+    "当前网络出口地区不被 Gemini 支持（如香港）。请将代理节点切换到美国、日本、新加坡、台湾等支持地区后重试。",
   // commands
   "cmd.open_chat": "打开 AI Chat",
   "cmd.open_popover": "打开 Margin 悬浮对话",
@@ -68,8 +70,6 @@ const zh: Record<string, string> = {
   "settings.base_url_placeholder": "base URL（可选，代理 / 网关用）",
   "settings.save": "保存",
   "settings.cancel": "取消",
-  "settings.default_model": "默认模型",
-  "settings.default_model_desc": "新对话 / 划词使用的默认模型",
   "settings.system_instruction": "系统指令（可选）",
   "settings.system_instruction_desc": "追加给模型的全局设定，例如“用简洁中文回答”",
   "settings.limit_context": "上下文 {n}",
@@ -89,6 +89,8 @@ const en: Record<string, string> = {
   "common.error": "Error: ",
   "common.copied": "Copied",
   "common.copy_failed": "Copy failed",
+  "gemini.location_blocked":
+    "Your current network region is not supported by Gemini (e.g. Hong Kong). Switch your proxy node to a supported region (US/JP/SG/TW) and retry.",
   "cmd.open_chat": "Open AI Chat",
   "cmd.open_popover": "Open Margin Popover",
   "chat.new": "New chat",
@@ -135,8 +137,6 @@ const en: Record<string, string> = {
   "settings.base_url_placeholder": "base URL (optional, for proxy/gateway)",
   "settings.save": "Save",
   "settings.cancel": "Cancel",
-  "settings.default_model": "Default model",
-  "settings.default_model_desc": "The model used for new chats and the selection popover",
   "settings.system_instruction": "System instruction (optional)",
   "settings.system_instruction_desc":
     "Global instructions appended to the model, e.g. \"answer in concise Chinese\"",
