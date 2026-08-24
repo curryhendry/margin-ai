@@ -1,16 +1,23 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import type AIPlugin from "./main";
-import { testGeminiModel } from "./llm/gemini";
+import { getProvider } from "./llm";
+import type { ModelMeta } from "./llm/types";
 import { t, tf } from "./i18n";
 
-export type ProviderId = "gemini";
+export type ProviderId = "gemini" | "deepseek";
+
+/** 供应商展示名（设置页下拉用） */
+export const PROVIDER_LABELS: Record<ProviderId, string> = {
+  gemini: "Gemini",
+  deepseek: "DeepSeek",
+};
 
 export interface AIModel {
   /** 唯一 ID */
   id: string;
   /** 模型名称，即发给 API 的 model 字段，例如 gemini-3.5-flash（用户录入，不写硬） */
   name: string;
-  /** 供应商，初期仅 gemini，结构可扩展 */
+  /** 供应商：gemini / deepseek（新增时同步扩展 ProviderId 与 PROVIDER_LABELS） */
   provider: ProviderId;
   /** API Key，用户录入 */
   apiKey: string;
@@ -113,6 +120,14 @@ export class AISettingsTab extends PluginSettingTab {
     });
 
     const addWrap = card.createDiv({ cls: "ai-set-add" });
+    const providerSelect = addWrap.createEl("select", {
+      cls: "ai-set-input ai-set-provider",
+      attr: { "aria-label": t("settings.provider_placeholder") },
+    });
+    for (const [id, label] of Object.entries(PROVIDER_LABELS)) {
+      const opt = providerSelect.createEl("option", { text: label, value: id });
+      if (id === "gemini") opt.selected = true;
+    }
     const nameInput = addWrap.createEl("input", {
       cls: "ai-set-input",
       placeholder: t("settings.model_name_placeholder"),
@@ -123,25 +138,30 @@ export class AISettingsTab extends PluginSettingTab {
       text: t("settings.add_model"),
     });
     addBtn.addEventListener("click", () => {
+      const provider = (providerSelect.value || "gemini") as ProviderId;
       const name = nameInput.value.trim();
       const key = keyInput.value.trim();
       if (!name || !key) {
         new Notice(t("settings.need_name_key"));
         return;
       }
-      void this.addModel(name, key);
+      void this.addModel(provider, name, key);
     });
   }
 
   /** 添加模型（提取自 addBtn handler，避免 async 箭头被 lint 标记） */
-  private async addModel(name: string, key: string): Promise<void> {
+  private async addModel(
+    provider: ProviderId,
+    name: string,
+    key: string
+  ): Promise<void> {
     const model: AIModel = {
       id:
         "m_" +
         Date.now().toString(36) +
         Math.random().toString(36).slice(2, 6),
       name,
-      provider: "gemini",
+      provider,
       apiKey: key,
     };
     this.plugin.settings.models.push(model);
@@ -170,7 +190,10 @@ export class AISettingsTab extends PluginSettingTab {
 
       const info = row.createDiv({ cls: "ai-set-model-info" });
       info.createSpan({ cls: "ai-set-model-name", text: m.name });
-      info.createSpan({ cls: "ai-set-model-provider", text: m.provider });
+      info.createSpan({
+        cls: "ai-set-model-provider",
+        text: PROVIDER_LABELS[m.provider] ?? m.provider,
+      });
       const limitsSpan = info.createSpan({
         cls: "ai-set-model-limits",
         text: modelLimitsText(m),
@@ -223,10 +246,23 @@ export class AISettingsTab extends PluginSettingTab {
   /** 测试连接并回填限额（提取自 testBtn handler） */
   private async testModel(m: AIModel, testBtn: HTMLButtonElement): Promise<void> {
     testBtn.setText(t("settings.testing"));
-    const r = await testGeminiModel(m);
-    if (r.ok && r.meta) {
-      m.inputTokenLimit = r.meta.inputTokenLimit;
-      m.outputTokenLimit = r.meta.outputTokenLimit;
+    let provider;
+    try {
+      provider = getProvider(m.provider);
+    } catch (e) {
+      new Notice(t("settings.test_fail_prefix") + (e as Error).message);
+      testBtn.setText(t("settings.test"));
+      return;
+    }
+    const getMeta = provider.getModelMeta
+      ? provider.getModelMeta.bind(provider)
+      : null;
+    const r = getMeta ? await getMeta(m) : { ok: true, meta: {} as ModelMeta };
+    if (r.ok) {
+      if (r.meta) {
+        m.inputTokenLimit = r.meta.inputTokenLimit;
+        m.outputTokenLimit = r.meta.outputTokenLimit;
+      }
       await this.plugin.saveSettings();
       new Notice(
         tf("settings.test_ok", {
@@ -266,6 +302,13 @@ export class AISettingsTab extends PluginSettingTab {
       value: m.name,
       placeholder: t("settings.model_name"),
     });
+    const providerSelect = row.createEl("select", {
+      cls: "ai-set-input ai-set-provider",
+    });
+    for (const [id, label] of Object.entries(PROVIDER_LABELS)) {
+      const opt = providerSelect.createEl("option", { text: label, value: id });
+      if (id === m.provider) opt.selected = true;
+    }
     const keyInput = createKeyInput(row, m.apiKey);
     const urlInput = row.createEl("input", {
       cls: "ai-set-input",
@@ -280,6 +323,7 @@ export class AISettingsTab extends PluginSettingTab {
     });
     save.addEventListener("click", () => {
       m.name = nameInput.value.trim() || m.name;
+      m.provider = (providerSelect.value || m.provider) as ProviderId;
       m.apiKey = keyInput.value.trim() || m.apiKey;
       m.baseUrl = urlInput.value.trim() || undefined;
       void this.plugin.saveSettings().then(() => this.display());

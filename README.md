@@ -39,11 +39,13 @@ Visit [Releases](https://github.com/curryhendry/margin-ai/releases) to download 
 
 ---
 
-## Configuration (Gemini) / 配置
+## Configuration / 配置
 
-1. Open plugin settings → **Add model** / 打开插件设置 → 添加模型
-2. Enter the model name you want, e.g. `gemini-3.5-flash` (matches Google AI Studio) / 模型名称填你想要的型号
-3. Enter your Gemini API key ([https://aistudio.google.com/api-keys](https://aistudio.google.com/api-keys)) / API Key 填你的 Gemini Key
+1. Open plugin settings → **Add model**（select provider + model name + API key）/ 打开插件设置 → 添加模型（选择供应商 + 模型名 + API Key）
+2. **Gemini**: model name e.g. `gemini-3.5-flash`; API key from [Google AI Studio](https://aistudio.google.com/api-keys) / Gemini：模型名如 `gemini-3.5-flash`，Key 从 Google AI Studio 获取
+3. **DeepSeek**: model name e.g. `deepseek-chat` / `deepseek-reasoner`; API key from [DeepSeek Open Platform](https://platform.deepseek.com) / DeepSeek：模型名如 `deepseek-chat`、`deepseek-reasoner`，Key 从 DeepSeek 开放平台获取
+4. Optional base URL for gateway/proxy (e.g. OpenRouter, one-api) / 可选：自定义 base URL 用于网关或代理（如 OpenRouter、one-api）
+5. Click **Test** to verify connection and fill in model limits / 点击「测试」验证连接并回填限额
 
 ---
 

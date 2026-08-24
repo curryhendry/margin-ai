@@ -36,11 +36,13 @@ Visit [Releases](https://github.com/curryhendry/margin-ai/releases) to download 
 
 ---
 
-## Configuration (Gemini)
+## Configuration
 
-1. Open plugin settings → **Add model**
-2. Enter the model name you want, e.g. `gemini-3.5-flash` (matches Google AI Studio)
-3. Enter your Gemini API key ([https://aistudio.google.com/api-keys](https://aistudio.google.com/api-keys))
+1. Open plugin settings → **Add model** (pick provider + model name + API key)
+2. **Gemini**: model name e.g. `gemini-3.5-flash`; API key from [Google AI Studio](https://aistudio.google.com/api-keys)
+3. **DeepSeek**: model name e.g. `deepseek-chat` / `deepseek-reasoner`; API key from [DeepSeek Open Platform](https://platform.deepseek.com)
+4. Optional base URL for gateways/proxies (e.g. OpenRouter, one-api)
+5. Click **Test** to verify the connection and fill in token limits
 
 ---
 

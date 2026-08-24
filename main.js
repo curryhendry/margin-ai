@@ -28,10 +28,10 @@ __export(main_exports, {
   default: () => AIPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian8 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 
 // src/settings.ts
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 
 // src/llm/gemini.ts
 var import_obsidian2 = require("obsidian");
@@ -53,6 +53,10 @@ var zh = {
   "common.copied": "\u5DF2\u590D\u5236",
   "common.copy_failed": "\u590D\u5236\u5931\u8D25",
   "gemini.location_blocked": "\u5F53\u524D\u7F51\u7EDC\u51FA\u53E3\u5730\u533A\u4E0D\u88AB Gemini \u652F\u6301\uFF08\u5982\u9999\u6E2F\uFF09\u3002\u8BF7\u5C06\u4EE3\u7406\u8282\u70B9\u5207\u6362\u5230\u7F8E\u56FD\u3001\u65E5\u672C\u3001\u65B0\u52A0\u5761\u3001\u53F0\u6E7E\u7B49\u652F\u6301\u5730\u533A\u540E\u91CD\u8BD5\u3002",
+  "api.network_error": "\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25",
+  "api.invalid_key": "API Key \u65E0\u6548\uFF0C\u8BF7\u68C0\u67E5\u540E\u91CD\u8BD5",
+  "api.insufficient_balance": "\u8D26\u6237\u4F59\u989D\u4E0D\u8DB3\uFF0C\u8BF7\u5145\u503C\u540E\u91CD\u8BD5",
+  "api.rate_limit": "\u8BF7\u6C42\u8FC7\u4E8E\u9891\u7E41\uFF08\u89E6\u53D1\u9650\u6D41\uFF09\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5",
   // commands
   "cmd.open_chat": "\u6253\u5F00 AI Chat",
   "cmd.open_popover": "\u6253\u5F00 Margin \u60AC\u6D6E\u5BF9\u8BDD",
@@ -81,8 +85,9 @@ var zh = {
   "settings.eye": "\u663E\u793A / \u9690\u85CF",
   "settings.api_key": "API Key",
   "settings.add_model": "\u6DFB\u52A0\u6A21\u578B",
-  "settings.add_hint": "\u6A21\u578B\u540D\u79F0\u586B\u4F60\u60F3\u8981\u7684\u578B\u53F7\uFF08\u5982 gemini-3.5-flash\uFF09\uFF0CAPI Key \u4ECE Google AI Studio \u83B7\u53D6\u3002\u53EF\u6DFB\u52A0\u591A\u4E2A\u5E76\u968F\u65F6\u5207\u6362\u3002",
-  "settings.model_name_placeholder": "\u6A21\u578B\u540D\u79F0\uFF0C\u5982 gemini-3.5-flash",
+  "settings.add_hint": "\u9009\u62E9\u4F9B\u5E94\u5546\uFF08Gemini / DeepSeek\uFF09\uFF0C\u6A21\u578B\u540D\u79F0\u586B\u4F60\u60F3\u8981\u7684\u578B\u53F7\uFF08\u5982 gemini-3.5-flash \u6216 deepseek-chat\uFF09\uFF0CAPI Key \u4ECE\u5404\u81EA\u5E73\u53F0\u83B7\u53D6\u3002\u53EF\u6DFB\u52A0\u591A\u4E2A\u5E76\u968F\u65F6\u5207\u6362\u3002",
+  "settings.provider_placeholder": "\u4F9B\u5E94\u5546",
+  "settings.model_name_placeholder": "\u6A21\u578B\u540D\u79F0\uFF0C\u5982 gemini-3.5-flash \u6216 deepseek-chat",
   "settings.need_name_key": "\u8BF7\u586B\u5199\u6A21\u578B\u540D\u79F0\u548C API Key",
   "settings.models": "\u5DF2\u6DFB\u52A0\u6A21\u578B",
   "settings.empty": "\u8FD8\u6CA1\u6709\u6A21\u578B\uFF0C\u5148\u5728\u4E0A\u65B9\u6DFB\u52A0\u3002",
@@ -120,6 +125,10 @@ var en = {
   "common.copied": "Copied",
   "common.copy_failed": "Copy failed",
   "gemini.location_blocked": "Your current network region is not supported by Gemini (e.g. Hong Kong). Switch your proxy node to a supported region (US/JP/SG/TW) and retry.",
+  "api.network_error": "Network request failed",
+  "api.invalid_key": "Invalid API key, please check and retry",
+  "api.insufficient_balance": "Insufficient account balance, please top up and retry",
+  "api.rate_limit": "Rate limit exceeded, please retry later",
   "cmd.open_chat": "Open AI Chat",
   "cmd.open_popover": "Open Margin Popover",
   "chat.new": "New chat",
@@ -144,8 +153,9 @@ var en = {
   "settings.eye": "Show / Hide",
   "settings.api_key": "API Key",
   "settings.add_model": "Add model",
-  "settings.add_hint": "Enter the model name (e.g. gemini-3.5-flash) and an API key from Google AI Studio. You can add multiple models and switch anytime.",
-  "settings.model_name_placeholder": "Model name, e.g. gemini-3.5-flash",
+  "settings.add_hint": "Pick a provider (Gemini / DeepSeek), enter the model name (e.g. gemini-3.5-flash or deepseek-chat), and an API key from the provider's console. You can add multiple models and switch anytime.",
+  "settings.provider_placeholder": "Provider",
+  "settings.model_name_placeholder": "Model name, e.g. gemini-3.5-flash or deepseek-chat",
   "settings.need_name_key": "Please fill in model name and API key",
   "settings.models": "Added models",
   "settings.empty": "No models yet. Add one above.",
@@ -337,7 +347,214 @@ var GeminiProvider = class {
   }
 };
 
+// src/llm/deepseek.ts
+var import_obsidian3 = require("obsidian");
+function friendlyError2(status, body) {
+  const b = body || "";
+  if (b.includes("Invalid API Key") || b.includes("invalid api key")) {
+    return t("api.invalid_key");
+  }
+  if (b.includes("Insufficient Balance") || b.includes("insufficient user balance")) {
+    return t("api.insufficient_balance");
+  }
+  if (b.includes("Rate limit") || b.includes("rate limit")) {
+    return t("api.rate_limit");
+  }
+  return `DeepSeek API ${status}: ${b.slice(0, 300)}`;
+}
+var DeepSeekProvider = class {
+  constructor() {
+    __publicField(this, "id", "deepseek");
+  }
+  async getModelMeta(model) {
+    const base = model.baseUrl || "https://api.deepseek.com/v1";
+    const modelsRes = await this.authGet(`${base}/models`, model.apiKey);
+    if (modelsRes.status < 400) {
+      const list = modelsRes.json.data;
+      const hit = list == null ? void 0 : list.find(
+        (x) => {
+          var _a;
+          return x.id === model.name || ((_a = x.id) == null ? void 0 : _a.toLowerCase()) === model.name.toLowerCase();
+        }
+      );
+      if (hit) {
+        const meta = {};
+        if (typeof hit.context_window === "number") meta.inputTokenLimit = hit.context_window;
+        if (typeof hit.max_output_tokens === "number") meta.outputTokenLimit = hit.max_output_tokens;
+        return { ok: true, meta };
+      }
+      return { ok: true, meta: {} };
+    }
+    if (modelsRes.status === 404 || modelsRes.status === 405) {
+      return this.probeConnectivity(base, model);
+    }
+    return { ok: false, error: friendlyError2(modelsRes.status, modelsRes.text || "") };
+  }
+  /** 带鉴权的 GET */
+  async authGet(url, apiKey) {
+    return (0, import_obsidian3.requestUrl)({ url, method: "GET", headers: { Authorization: `Bearer ${apiKey}` }, throw: false });
+  }
+  /** 最小联通性探测：POST /chat/completions，非流式、极短消息；网关不实现 /models 时的兜底 */
+  async probeConnectivity(base, model) {
+    try {
+      const r = await (0, import_obsidian3.requestUrl)({
+        url: `${base}/chat/completions`,
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${model.apiKey}` },
+        body: JSON.stringify({ model: model.name, messages: [{ role: "user", content: "ping" }], max_tokens: 1 }),
+        throw: false
+      });
+      if (r.status >= 400) return { ok: false, error: friendlyError2(r.status, r.text || "") };
+      return { ok: true, meta: {} };
+    } catch (e) {
+      return { ok: false, error: (e == null ? void 0 : e.message) || String(e) };
+    }
+  }
+  async chat(model, messages, cb, opts) {
+    var _a, _b, _c, _d;
+    const base = model.baseUrl || "https://api.deepseek.com/v1";
+    const url = `${base}/chat/completions`;
+    const msgs = [];
+    if ((opts == null ? void 0 : opts.systemInstruction) && opts.systemInstruction.trim()) {
+      msgs.push({ role: "system", content: opts.systemInstruction });
+    }
+    for (const m of messages) {
+      msgs.push({
+        role: m.role === "model" ? "assistant" : "user",
+        content: m.content
+      });
+    }
+    const body = {
+      model: model.name,
+      messages: msgs,
+      stream: true,
+      stream_options: { include_usage: true }
+    };
+    let usage = null;
+    let emitted = false;
+    let usageEmitted = false;
+    const handleDataJson = (json) => {
+      var _a2, _b2, _c2, _d2, _e, _f, _g, _h, _i, _j;
+      try {
+        const data = JSON.parse(json);
+        const piece = ((_c2 = (_b2 = (_a2 = data.choices) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.delta) == null ? void 0 : _c2.content) || ((_f = (_e = (_d2 = data.choices) == null ? void 0 : _d2[0]) == null ? void 0 : _e.delta) == null ? void 0 : _f["reasoning_content"]) || "";
+        if (piece) {
+          emitted = true;
+          (_g = cb.onToken) == null ? void 0 : _g.call(cb, piece);
+        }
+        if (data.usage && !usageEmitted) {
+          usage = {
+            promptTokens: (_h = data.usage.prompt_tokens) != null ? _h : 0,
+            completionTokens: (_i = data.usage.completion_tokens) != null ? _i : 0,
+            totalTokens: (_j = data.usage.total_tokens) != null ? _j : 0
+          };
+          usageEmitted = true;
+        }
+      } catch (e) {
+      }
+    };
+    const feedSSELines = (lines) => {
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const json = trimmed.slice(5).trim();
+        if (!json || json === "[DONE]") continue;
+        handleDataJson(json);
+      }
+    };
+    const send = async (withUsageFlag) => {
+      var _a2;
+      const b = { ...body };
+      if (!withUsageFlag) delete b.stream_options;
+      const r = await (0, import_obsidian3.requestUrl)({
+        url,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${model.apiKey}`
+        },
+        body: JSON.stringify(b),
+        throw: false
+      });
+      if (r.status >= 400) {
+        return { ok: false, error: friendlyError2(r.status, r.text || "") };
+      }
+      usage = null;
+      usageEmitted = false;
+      feedSSELines((r.text || "").split("\n"));
+      (_a2 = cb.onDone) == null ? void 0 : _a2.call(cb, usage);
+      return { ok: true };
+    };
+    const xhrResult = await new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", url);
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.setRequestHeader("Authorization", `Bearer ${model.apiKey}`);
+      let buf = "";
+      let lastLen = 0;
+      const drain = () => {
+        buf += xhr.responseText.slice(lastLen);
+        lastLen = xhr.responseText.length;
+        const lines = buf.split("\n");
+        buf = lines.pop() || "";
+        feedSSELines(lines);
+      };
+      xhr.onprogress = drain;
+      xhr.onload = () => {
+        var _a2;
+        drain();
+        if (xhr.status < 400) {
+          (_a2 = cb.onDone) == null ? void 0 : _a2.call(cb, usage);
+          resolve({ ok: true });
+        } else {
+          resolve({
+            ok: false,
+            error: friendlyError2(xhr.status, xhr.responseText || "")
+          });
+        }
+      };
+      xhr.onerror = () => resolve({ ok: false, error: t("api.network_error") });
+      xhr.onabort = () => resolve({ ok: false, error: "\u8BF7\u6C42\u5DF2\u4E2D\u65AD" });
+      try {
+        xhr.send(JSON.stringify(body));
+      } catch (e) {
+        resolve({ ok: false, error: "\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25\uFF1A" + e.message });
+      }
+    });
+    if (xhrResult.ok) return;
+    if (emitted) {
+      (_a = cb.onError) == null ? void 0 : _a.call(cb, new Error(xhrResult.error || "\u8BF7\u6C42\u5931\u8D25"));
+      return;
+    }
+    const r1 = await send(true);
+    if (r1.ok) return;
+    const s1 = (r1.error || "").toLowerCase();
+    if (((_b = r1.error) == null ? void 0 : _b.includes("400")) || s1.includes("stream_options") || s1.includes("bad request")) {
+      const r2 = await send(false);
+      if (r2.ok) return;
+      (_c = cb.onError) == null ? void 0 : _c.call(cb, new Error(r2.error || "\u8BF7\u6C42\u5931\u8D25"));
+      return;
+    }
+    (_d = cb.onError) == null ? void 0 : _d.call(cb, new Error(r1.error || "\u8BF7\u6C42\u5931\u8D25"));
+  }
+};
+
+// src/llm/index.ts
+var providers = {
+  gemini: new GeminiProvider(),
+  deepseek: new DeepSeekProvider()
+};
+function getProvider(id) {
+  const p = providers[id];
+  if (!p) throw new Error(`\u672A\u77E5\u7684\u4F9B\u5E94\u5546\uFF1A${id}`);
+  return p;
+}
+
 // src/settings.ts
+var PROVIDER_LABELS = {
+  gemini: "Gemini",
+  deepseek: "DeepSeek"
+};
 var DEFAULT_SETTINGS = {
   models: [],
   defaultModelId: "",
@@ -375,7 +592,7 @@ function createKeyInput(container, value = "") {
   });
   return input;
 }
-var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
+var AISettingsTab = class extends import_obsidian4.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     __publicField(this, "plugin");
@@ -385,7 +602,7 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("ai-set");
-    new import_obsidian3.Setting(containerEl).setName(t("settings.title")).setHeading();
+    new import_obsidian4.Setting(containerEl).setName(t("settings.title")).setHeading();
     this.renderAddModel(containerEl);
     this.renderModelList(containerEl);
     this.renderGeneral(containerEl);
@@ -393,12 +610,20 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
   /** 添加模型 */
   renderAddModel(containerEl) {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
-    new import_obsidian3.Setting(card).setName(t("settings.add_model")).setHeading();
+    new import_obsidian4.Setting(card).setName(t("settings.add_model")).setHeading();
     card.createEl("p", {
       cls: "ai-set-hint",
       text: t("settings.add_hint")
     });
     const addWrap = card.createDiv({ cls: "ai-set-add" });
+    const providerSelect = addWrap.createEl("select", {
+      cls: "ai-set-input ai-set-provider",
+      attr: { "aria-label": t("settings.provider_placeholder") }
+    });
+    for (const [id, label] of Object.entries(PROVIDER_LABELS)) {
+      const opt = providerSelect.createEl("option", { text: label, value: id });
+      if (id === "gemini") opt.selected = true;
+    }
     const nameInput = addWrap.createEl("input", {
       cls: "ai-set-input",
       placeholder: t("settings.model_name_placeholder")
@@ -409,21 +634,22 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
       text: t("settings.add_model")
     });
     addBtn.addEventListener("click", () => {
+      const provider = providerSelect.value || "gemini";
       const name = nameInput.value.trim();
       const key = keyInput.value.trim();
       if (!name || !key) {
-        new import_obsidian3.Notice(t("settings.need_name_key"));
+        new import_obsidian4.Notice(t("settings.need_name_key"));
         return;
       }
-      void this.addModel(name, key);
+      void this.addModel(provider, name, key);
     });
   }
   /** 添加模型（提取自 addBtn handler，避免 async 箭头被 lint 标记） */
-  async addModel(name, key) {
+  async addModel(provider, name, key) {
     const model = {
       id: "m_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       name,
-      provider: "gemini",
+      provider,
       apiKey: key
     };
     this.plugin.settings.models.push(model);
@@ -436,7 +662,7 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
   /** 模型列表 */
   renderModelList(containerEl) {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
-    new import_obsidian3.Setting(card).setName(t("settings.models")).setHeading();
+    new import_obsidian4.Setting(card).setName(t("settings.models")).setHeading();
     if (this.plugin.settings.models.length === 0) {
       card.createEl("p", {
         cls: "ai-set-empty",
@@ -445,10 +671,14 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
       return;
     }
     this.plugin.settings.models.forEach((m) => {
+      var _a;
       const row = card.createDiv({ cls: "ai-set-model-row" });
       const info = row.createDiv({ cls: "ai-set-model-info" });
       info.createSpan({ cls: "ai-set-model-name", text: m.name });
-      info.createSpan({ cls: "ai-set-model-provider", text: m.provider });
+      info.createSpan({
+        cls: "ai-set-model-provider",
+        text: (_a = PROVIDER_LABELS[m.provider]) != null ? _a : m.provider
+      });
       const limitsSpan = info.createSpan({
         cls: "ai-set-model-limits",
         text: modelLimitsText(m)
@@ -493,12 +723,23 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
   /** 测试连接并回填限额（提取自 testBtn handler） */
   async testModel(m, testBtn) {
     testBtn.setText(t("settings.testing"));
-    const r = await testGeminiModel(m);
-    if (r.ok && r.meta) {
-      m.inputTokenLimit = r.meta.inputTokenLimit;
-      m.outputTokenLimit = r.meta.outputTokenLimit;
+    let provider;
+    try {
+      provider = getProvider(m.provider);
+    } catch (e) {
+      new import_obsidian4.Notice(t("settings.test_fail_prefix") + e.message);
+      testBtn.setText(t("settings.test"));
+      return;
+    }
+    const getMeta = provider.getModelMeta ? provider.getModelMeta.bind(provider) : null;
+    const r = getMeta ? await getMeta(m) : { ok: true, meta: {} };
+    if (r.ok) {
+      if (r.meta) {
+        m.inputTokenLimit = r.meta.inputTokenLimit;
+        m.outputTokenLimit = r.meta.outputTokenLimit;
+      }
       await this.plugin.saveSettings();
-      new import_obsidian3.Notice(
+      new import_obsidian4.Notice(
         tf("settings.test_ok", {
           name: m.name,
           limits: modelLimitsText(m) || t("settings.no_limits")
@@ -506,7 +747,7 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
       );
       this.display();
     } else {
-      new import_obsidian3.Notice(
+      new import_obsidian4.Notice(
         t("settings.test_fail_prefix") + (r.error || t("settings.unknown_error"))
       );
       testBtn.setText(t("settings.test"));
@@ -534,6 +775,13 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
       value: m.name,
       placeholder: t("settings.model_name")
     });
+    const providerSelect = row.createEl("select", {
+      cls: "ai-set-input ai-set-provider"
+    });
+    for (const [id, label] of Object.entries(PROVIDER_LABELS)) {
+      const opt = providerSelect.createEl("option", { text: label, value: id });
+      if (id === m.provider) opt.selected = true;
+    }
     const keyInput = createKeyInput(row, m.apiKey);
     const urlInput = row.createEl("input", {
       cls: "ai-set-input",
@@ -547,6 +795,7 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
     });
     save.addEventListener("click", () => {
       m.name = nameInput.value.trim() || m.name;
+      m.provider = providerSelect.value || m.provider;
       m.apiKey = keyInput.value.trim() || m.apiKey;
       m.baseUrl = urlInput.value.trim() || void 0;
       void this.plugin.saveSettings().then(() => this.display());
@@ -560,7 +809,7 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
   /** 系统指令 */
   renderGeneral(containerEl) {
     const card = containerEl.createDiv({ cls: "ai-set-card" });
-    new import_obsidian3.Setting(card).setName(t("settings.system_instruction")).setDesc(t("settings.system_instruction_desc")).addTextArea((ta) => {
+    new import_obsidian4.Setting(card).setName(t("settings.system_instruction")).setDesc(t("settings.system_instruction_desc")).addTextArea((ta) => {
       ta.setValue(this.plugin.settings.systemInstruction);
       ta.onChange((v) => {
         this.plugin.settings.systemInstruction = v;
@@ -571,20 +820,10 @@ var AISettingsTab = class extends import_obsidian3.PluginSettingTab {
 };
 
 // src/views/chatView.ts
-var import_obsidian6 = require("obsidian");
-
-// src/llm/index.ts
-var providers = {
-  gemini: new GeminiProvider()
-};
-function getProvider(id) {
-  const p = providers[id];
-  if (!p) throw new Error(`\u672A\u77E5\u7684\u4F9B\u5E94\u5546\uFF1A${id}`);
-  return p;
-}
+var import_obsidian7 = require("obsidian");
 
 // src/util.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 function electronClipboard() {
   var _a;
   try {
@@ -620,38 +859,38 @@ function copyViaExecCommand(text) {
   }
 }
 async function copyText(text) {
-  if (import_obsidian4.Platform.isDesktop) {
+  if (import_obsidian5.Platform.isDesktop) {
     const cb = electronClipboard();
     if (cb) {
       try {
         cb.writeText(text);
         if (cb.readText() === text) {
-          new import_obsidian4.Notice(t("common.copied"));
+          new import_obsidian5.Notice(t("common.copied"));
           return;
         }
       } catch (e) {
       }
     }
     if (copyViaExecCommand(text)) {
-      new import_obsidian4.Notice(t("common.copied"));
+      new import_obsidian5.Notice(t("common.copied"));
       return;
     }
-    new import_obsidian4.Notice(t("common.copy_failed"));
+    new import_obsidian5.Notice(t("common.copy_failed"));
     return;
   }
   if (await copyViaNavigator(text)) {
-    new import_obsidian4.Notice(t("common.copied"));
+    new import_obsidian5.Notice(t("common.copied"));
     return;
   }
   if (copyViaExecCommand(text)) {
-    new import_obsidian4.Notice(t("common.copied"));
+    new import_obsidian5.Notice(t("common.copied"));
     return;
   }
-  new import_obsidian4.Notice(t("common.copy_failed"));
+  new import_obsidian5.Notice(t("common.copy_failed"));
 }
 
 // src/linkSuggest.ts
-var import_obsidian5 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 var NoteLinkSuggest = class {
   constructor(app, input, onPick) {
     __publicField(this, "app");
@@ -717,7 +956,7 @@ var NoteLinkSuggest = class {
         attr: { "data-path": f.path }
       });
       const icon = item.createSpan({ cls: "ai-link-suggest-item-icon" });
-      (0, import_obsidian5.setIcon)(icon, "file-text");
+      (0, import_obsidian6.setIcon)(icon, "file-text");
       item.createSpan({ cls: "ai-link-suggest-item-name", text: f.basename });
       const parent = (_b = (_a = f.parent) == null ? void 0 : _a.path) != null ? _b : "";
       item.createSpan({ cls: "ai-link-suggest-item-path", text: parent });
@@ -775,7 +1014,7 @@ var NoteLinkSuggest = class {
 
 // src/views/chatView.ts
 var VIEW_TYPE_CHAT = "margin-chat";
-var ChatView = class extends import_obsidian6.ItemView {
+var ChatView = class extends import_obsidian7.ItemView {
   constructor(leaf, plugin) {
     super(leaf);
     __publicField(this, "plugin");
@@ -895,7 +1134,7 @@ var ChatView = class extends import_obsidian6.ItemView {
       cls: "ai-chat-clear",
       attr: { type: "button", title: t("chat.new") }
     });
-    (0, import_obsidian6.setIcon)(newBtn, "plus");
+    (0, import_obsidian7.setIcon)(newBtn, "plus");
     newBtn.addEventListener("click", () => {
       this.histories.delete(this.noteKey);
       this.usageByNote.delete(this.noteKey);
@@ -949,7 +1188,7 @@ var ChatView = class extends import_obsidian6.ItemView {
         cls: "ai-msg-copy",
         attr: { type: "button", title: t("common.copy") }
       });
-      (0, import_obsidian6.setIcon)(copyBtn, "copy");
+      (0, import_obsidian7.setIcon)(copyBtn, "copy");
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         void copyText(m.content);
@@ -977,7 +1216,7 @@ var ChatView = class extends import_obsidian6.ItemView {
     if (!text || this.busy) return;
     const model = this.currentModel();
     if (!model) {
-      new import_obsidian6.Notice(t("common.no_model"));
+      new import_obsidian7.Notice(t("common.no_model"));
       return;
     }
     this.attachRefsFromText(text);
@@ -996,7 +1235,7 @@ var ChatView = class extends import_obsidian6.ItemView {
       if (!name) continue;
       const f = this.resolveNote(name);
       if (!f) {
-        new import_obsidian6.Notice(tf("chat.note_not_found", { name }));
+        new import_obsidian7.Notice(tf("chat.note_not_found", { name }));
         continue;
       }
       if (!this.attachedNotes.some((x) => x.path === f.path)) {
@@ -1027,12 +1266,12 @@ var ChatView = class extends import_obsidian6.ItemView {
   autoAttachCurrentNote() {
     if (!this.noteKey || this.noteKey === "(\u65E0\u7B14\u8BB0)") return;
     const f = this.app.vault.getAbstractFileByPath(this.noteKey);
-    if (f instanceof import_obsidian6.TFile) this.attachNote(f);
+    if (f instanceof import_obsidian7.TFile) this.attachNote(f);
   }
   /** 解析 [[名称]]：wikilink/路径优先，其次按 basename 精确/模糊匹配（兜底） */
   resolveNote(name) {
     const direct = this.app.metadataCache.getFirstLinkpathDest(name, "") || this.app.vault.getAbstractFileByPath(name);
-    if (direct instanceof import_obsidian6.TFile) return direct;
+    if (direct instanceof import_obsidian7.TFile) return direct;
     const lower = name.toLowerCase();
     const files = this.app.vault.getMarkdownFiles();
     return files.find((f) => f.basename.toLowerCase() === lower) || files.find((f) => f.basename.toLowerCase().includes(lower)) || null;
@@ -1057,7 +1296,7 @@ var ChatView = class extends import_obsidian6.ItemView {
       cls: "ai-msg-copy",
       attr: { type: "button", title: t("common.copy") }
     });
-    (0, import_obsidian6.setIcon)(copyBtn, "copy");
+    (0, import_obsidian7.setIcon)(copyBtn, "copy");
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       void copyText(acc);
@@ -1070,7 +1309,7 @@ var ChatView = class extends import_obsidian6.ItemView {
         const blocks = [];
         for (const n of this.attachedNotes) {
           const f = this.app.vault.getAbstractFileByPath(n.path);
-          if (!(f instanceof import_obsidian6.TFile)) continue;
+          if (!(f instanceof import_obsidian7.TFile)) continue;
           try {
             const content = await this.app.vault.cachedRead(f);
             blocks.push(`[[${n.basename}]]
@@ -1110,13 +1349,13 @@ ${blocks.join("\n\n---\n\n")}`;
           onError: (e) => {
             console.error("[Margin:chat] chat error", e);
             roleEl.setText("AI");
-            new import_obsidian6.Notice(t("common.error") + e.message);
+            new import_obsidian7.Notice(t("common.error") + e.message);
             contentEl.setText("\u26A0\uFE0F " + e.message);
             const retryBtn = aiBubble.createEl("button", {
               cls: "ai-msg-retry",
               attr: { type: "button", title: t("common.retry") }
             });
-            (0, import_obsidian6.setIcon)(retryBtn, "rotate-ccw");
+            (0, import_obsidian7.setIcon)(retryBtn, "rotate-ccw");
             retryBtn.addEventListener("click", (ev) => {
               ev.stopPropagation();
               aiBubble.remove();
@@ -1161,7 +1400,7 @@ ${blocks.join("\n\n---\n\n")}`;
 };
 
 // src/selection/popover.ts
-var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 var Z_TOP = 2147483e3;
 var _SelectionPopover = class _SelectionPopover {
   constructor(plugin, editor, selected) {
@@ -1204,7 +1443,7 @@ var _SelectionPopover = class _SelectionPopover {
       cls: "ai-popover-close",
       attr: { type: "button", title: t("common.close") }
     });
-    (0, import_obsidian7.setIcon)(close, "x");
+    (0, import_obsidian8.setIcon)(close, "x");
     close.addEventListener("click", (e) => {
       e.stopPropagation();
       this.close();
@@ -1345,16 +1584,16 @@ var _SelectionPopover = class _SelectionPopover {
         cls: "ai-popover-btn",
         attr: { type: "button", title: label }
       });
-      (0, import_obsidian7.setIcon)(b, iconId);
+      (0, import_obsidian8.setIcon)(b, iconId);
       b.addEventListener("click", fn);
     };
     mk(t("popover.insert"), "corner-down-left", () => {
       this.editor.replaceRange(this.lastResult, this.editor.getCursor());
-      new import_obsidian7.Notice(t("popover.inserted"));
+      new import_obsidian8.Notice(t("popover.inserted"));
     });
     mk(t("popover.overwrite"), "refresh-cw", () => {
       this.editor.replaceRange(this.lastResult, this.from, this.to);
-      new import_obsidian7.Notice(t("popover.overwritten"));
+      new import_obsidian8.Notice(t("popover.overwritten"));
     });
   }
   renderMessages() {
@@ -1374,7 +1613,7 @@ var _SelectionPopover = class _SelectionPopover {
         cls: "ai-popover-msg-copy",
         attr: { type: "button", title: t("common.copy") }
       });
-      (0, import_obsidian7.setIcon)(copyBtn, "copy");
+      (0, import_obsidian8.setIcon)(copyBtn, "copy");
       copyBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         void copyText(text);
@@ -1452,7 +1691,7 @@ var _SelectionPopover = class _SelectionPopover {
       if (!name) continue;
       const f = this.resolveNote(name);
       if (!f) {
-        new import_obsidian7.Notice(tf("chat.note_not_found", { name }));
+        new import_obsidian8.Notice(tf("chat.note_not_found", { name }));
         continue;
       }
       if (!this.attachedNotes.some((x) => x.path === f.path)) {
@@ -1483,7 +1722,7 @@ var _SelectionPopover = class _SelectionPopover {
   /** 解析 [[名称]]：wikilink/路径优先，其次按 basename 精确/模糊匹配（兜底） */
   resolveNote(name) {
     const direct = this.plugin.app.metadataCache.getFirstLinkpathDest(name, "") || this.plugin.app.vault.getAbstractFileByPath(name);
-    if (direct instanceof import_obsidian7.TFile) return direct;
+    if (direct instanceof import_obsidian8.TFile) return direct;
     const lower = name.toLowerCase();
     const files = this.plugin.app.vault.getMarkdownFiles();
     return files.find((f) => f.basename.toLowerCase() === lower) || files.find((f) => f.basename.toLowerCase().includes(lower)) || null;
@@ -1494,7 +1733,7 @@ var _SelectionPopover = class _SelectionPopover {
     if (!text || this.busy) return;
     const model = this.currentModel();
     if (!model) {
-      new import_obsidian7.Notice(t("common.no_model"));
+      new import_obsidian8.Notice(t("common.no_model"));
       return;
     }
     this.attachRefsFromText(text);
@@ -1538,7 +1777,7 @@ var _SelectionPopover = class _SelectionPopover {
       cls: "ai-popover-msg-copy",
       attr: { type: "button", title: t("common.copy") }
     });
-    (0, import_obsidian7.setIcon)(copyBtn, "copy");
+    (0, import_obsidian8.setIcon)(copyBtn, "copy");
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       void copyText(acc);
@@ -1550,7 +1789,7 @@ var _SelectionPopover = class _SelectionPopover {
         const blocks = [];
         for (const n of this.attachedNotes) {
           const f = this.plugin.app.vault.getAbstractFileByPath(n.path);
-          if (!(f instanceof import_obsidian7.TFile)) continue;
+          if (!(f instanceof import_obsidian8.TFile)) continue;
           try {
             const content = await this.plugin.app.vault.cachedRead(f);
             blocks.push(`[[${n.basename}]]
@@ -1588,13 +1827,13 @@ ${blocks.join("\n\n---\n\n")}`;
           onError: (e) => {
             console.error("[Margin:popover] chat error", e);
             roleEl.setText("AI");
-            new import_obsidian7.Notice(t("common.error") + e.message);
+            new import_obsidian8.Notice(t("common.error") + e.message);
             contentEl.setText("\u26A0\uFE0F " + e.message);
             const retryBtn = aiBubble.createEl("button", {
               cls: "ai-popover-msg-retry",
               attr: { type: "button", title: t("common.retry") }
             });
-            (0, import_obsidian7.setIcon)(retryBtn, "rotate-ccw");
+            (0, import_obsidian8.setIcon)(retryBtn, "rotate-ccw");
             retryBtn.addEventListener("click", (ev) => {
               ev.stopPropagation();
               aiBubble.remove();
@@ -1640,7 +1879,7 @@ __publicField(_SelectionPopover, "current");
 var SelectionPopover = _SelectionPopover;
 
 // src/main.ts
-var AIPlugin = class extends import_obsidian8.Plugin {
+var AIPlugin = class extends import_obsidian9.Plugin {
   async onload() {
     await this.loadSettings();
     setLang(detectObsidianLang());
@@ -1677,17 +1916,17 @@ var AIPlugin = class extends import_obsidian8.Plugin {
       id: "open-margin-popover",
       name: t("cmd.open_popover"),
       callback: () => {
-        let view = this.app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView);
+        let view = this.app.workspace.getActiveViewOfType(import_obsidian9.MarkdownView);
         if (!view) {
           for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
-            if (leaf.view instanceof import_obsidian8.MarkdownView) {
+            if (leaf.view instanceof import_obsidian9.MarkdownView) {
               view = leaf.view;
               break;
             }
           }
         }
         if (!view) {
-          new import_obsidian8.Notice(t("popover.no_note"));
+          new import_obsidian9.Notice(t("popover.no_note"));
           return;
         }
         new SelectionPopover(this, view.editor, view.editor.getSelection()).open();

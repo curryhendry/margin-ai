@@ -20,6 +20,10 @@ const zh: Record<string, string> = {
   "common.copy_failed": "复制失败",
   "gemini.location_blocked":
     "当前网络出口地区不被 Gemini 支持（如香港）。请将代理节点切换到美国、日本、新加坡、台湾等支持地区后重试。",
+  "api.network_error": "网络请求失败",
+  "api.invalid_key": "API Key 无效，请检查后重试",
+  "api.insufficient_balance": "账户余额不足，请充值后重试",
+  "api.rate_limit": "请求过于频繁（触发限流），请稍后重试",
   // commands
   "cmd.open_chat": "打开 AI Chat",
   "cmd.open_popover": "打开 Margin 悬浮对话",
@@ -50,8 +54,9 @@ const zh: Record<string, string> = {
   "settings.api_key": "API Key",
   "settings.add_model": "添加模型",
   "settings.add_hint":
-    "模型名称填你想要的型号（如 gemini-3.5-flash），API Key 从 Google AI Studio 获取。可添加多个并随时切换。",
-  "settings.model_name_placeholder": "模型名称，如 gemini-3.5-flash",
+    "选择供应商（Gemini / DeepSeek），模型名称填你想要的型号（如 gemini-3.5-flash 或 deepseek-chat），API Key 从各自平台获取。可添加多个并随时切换。",
+  "settings.provider_placeholder": "供应商",
+  "settings.model_name_placeholder": "模型名称，如 gemini-3.5-flash 或 deepseek-chat",
   "settings.need_name_key": "请填写模型名称和 API Key",
   "settings.models": "已添加模型",
   "settings.empty": "还没有模型，先在上方添加。",
@@ -91,6 +96,10 @@ const en: Record<string, string> = {
   "common.copy_failed": "Copy failed",
   "gemini.location_blocked":
     "Your current network region is not supported by Gemini (e.g. Hong Kong). Switch your proxy node to a supported region (US/JP/SG/TW) and retry.",
+  "api.network_error": "Network request failed",
+  "api.invalid_key": "Invalid API key, please check and retry",
+  "api.insufficient_balance": "Insufficient account balance, please top up and retry",
+  "api.rate_limit": "Rate limit exceeded, please retry later",
   "cmd.open_chat": "Open AI Chat",
   "cmd.open_popover": "Open Margin Popover",
   "chat.new": "New chat",
@@ -117,8 +126,9 @@ const en: Record<string, string> = {
   "settings.api_key": "API Key",
   "settings.add_model": "Add model",
   "settings.add_hint":
-    "Enter the model name (e.g. gemini-3.5-flash) and an API key from Google AI Studio. You can add multiple models and switch anytime.",
-  "settings.model_name_placeholder": "Model name, e.g. gemini-3.5-flash",
+    "Pick a provider (Gemini / DeepSeek), enter the model name (e.g. gemini-3.5-flash or deepseek-chat), and an API key from the provider's console. You can add multiple models and switch anytime.",
+  "settings.provider_placeholder": "Provider",
+  "settings.model_name_placeholder": "Model name, e.g. gemini-3.5-flash or deepseek-chat",
   "settings.need_name_key": "Please fill in model name and API key",
   "settings.models": "Added models",
   "settings.empty": "No models yet. Add one above.",

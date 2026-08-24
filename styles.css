@@ -713,3 +713,9 @@ button.ai-popover-msg-copy:hover,
 button.ai-popover-msg-edit:hover {
   background: var(--background-modifier-hover, rgba(127, 127, 127, 0.18));
 }
+/* DeepSeek / 多供应商：添加表单里的供应商下拉不抢占宽度 */
+.ai-set-provider {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 104px;
+}
