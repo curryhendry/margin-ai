@@ -618,13 +618,19 @@ var AISettingsTab = class extends import_obsidian4.PluginSettingTab {
     const addWrap = card.createDiv({ cls: "ai-set-add" });
     const providerWrap = addWrap.createDiv({ cls: "ai-set-provider-wrap" });
     providerWrap.createSpan({ cls: "ai-set-field-label", text: t("settings.provider") });
-    const providerSelect = providerWrap.createEl("select", {
-      cls: "ai-set-input ai-set-provider",
-      attr: { "aria-label": t("settings.provider") }
-    });
+    const providerBtns = providerWrap.createDiv({ cls: "ai-set-provider-btns" });
+    let provider = "gemini";
     for (const [id, label] of Object.entries(PROVIDER_LABELS)) {
-      const opt = providerSelect.createEl("option", { text: label, value: id });
-      if (id === "gemini") opt.selected = true;
+      const btn = providerBtns.createEl("button", {
+        cls: "ai-set-provider-btn" + (id === provider ? " is-active" : ""),
+        text: label,
+        attr: { type: "button" }
+      });
+      btn.addEventListener("click", () => {
+        provider = id;
+        providerBtns.querySelectorAll(".ai-set-provider-btn").forEach((b) => b.removeClass("is-active"));
+        btn.addClass("is-active");
+      });
     }
     const nameInput = addWrap.createEl("input", {
       cls: "ai-set-input",
@@ -636,7 +642,6 @@ var AISettingsTab = class extends import_obsidian4.PluginSettingTab {
       text: t("settings.add_model")
     });
     addBtn.addEventListener("click", () => {
-      const provider = providerSelect.value || "gemini";
       const name = nameInput.value.trim();
       const key = keyInput.value.trim();
       if (!name || !key) {
@@ -779,13 +784,19 @@ var AISettingsTab = class extends import_obsidian4.PluginSettingTab {
     });
     const providerWrap = row.createDiv({ cls: "ai-set-provider-wrap" });
     providerWrap.createSpan({ cls: "ai-set-field-label", text: t("settings.provider") });
-    const providerSelect = providerWrap.createEl("select", {
-      cls: "ai-set-input ai-set-provider",
-      attr: { "aria-label": t("settings.provider") }
-    });
+    const providerBtns = providerWrap.createDiv({ cls: "ai-set-provider-btns" });
+    let provider = m.provider;
     for (const [id, label] of Object.entries(PROVIDER_LABELS)) {
-      const opt = providerSelect.createEl("option", { text: label, value: id });
-      if (id === m.provider) opt.selected = true;
+      const btn = providerBtns.createEl("button", {
+        cls: "ai-set-provider-btn" + (id === provider ? " is-active" : ""),
+        text: label,
+        attr: { type: "button" }
+      });
+      btn.addEventListener("click", () => {
+        provider = id;
+        providerBtns.querySelectorAll(".ai-set-provider-btn").forEach((b) => b.removeClass("is-active"));
+        btn.addClass("is-active");
+      });
     }
     const keyInput = createKeyInput(row, m.apiKey);
     const urlInput = row.createEl("input", {
@@ -800,7 +811,7 @@ var AISettingsTab = class extends import_obsidian4.PluginSettingTab {
     });
     save.addEventListener("click", () => {
       m.name = nameInput.value.trim() || m.name;
-      m.provider = providerSelect.value || m.provider;
+      m.provider = provider;
       m.apiKey = keyInput.value.trim() || m.apiKey;
       m.baseUrl = urlInput.value.trim() || void 0;
       void this.plugin.saveSettings().then(() => this.display());
