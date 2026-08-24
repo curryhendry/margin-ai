@@ -120,9 +120,12 @@ export class AISettingsTab extends PluginSettingTab {
     });
 
     const addWrap = card.createDiv({ cls: "ai-set-add" });
-    const providerSelect = addWrap.createEl("select", {
+    // 供应商选择：带标签 + 下拉，明确提示此处可切换 Gemini / DeepSeek
+    const providerWrap = addWrap.createDiv({ cls: "ai-set-provider-wrap" });
+    providerWrap.createSpan({ cls: "ai-set-field-label", text: t("settings.provider") });
+    const providerSelect = providerWrap.createEl("select", {
       cls: "ai-set-input ai-set-provider",
-      attr: { "aria-label": t("settings.provider_placeholder") },
+      attr: { "aria-label": t("settings.provider") },
     });
     for (const [id, label] of Object.entries(PROVIDER_LABELS)) {
       const opt = providerSelect.createEl("option", { text: label, value: id });
@@ -302,8 +305,11 @@ export class AISettingsTab extends PluginSettingTab {
       value: m.name,
       placeholder: t("settings.model_name"),
     });
-    const providerSelect = row.createEl("select", {
+    const providerWrap = row.createDiv({ cls: "ai-set-provider-wrap" });
+    providerWrap.createSpan({ cls: "ai-set-field-label", text: t("settings.provider") });
+    const providerSelect = providerWrap.createEl("select", {
       cls: "ai-set-input ai-set-provider",
+      attr: { "aria-label": t("settings.provider") },
     });
     for (const [id, label] of Object.entries(PROVIDER_LABELS)) {
       const opt = providerSelect.createEl("option", { text: label, value: id });

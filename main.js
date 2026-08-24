@@ -86,7 +86,7 @@ var zh = {
   "settings.api_key": "API Key",
   "settings.add_model": "\u6DFB\u52A0\u6A21\u578B",
   "settings.add_hint": "\u9009\u62E9\u4F9B\u5E94\u5546\uFF08Gemini / DeepSeek\uFF09\uFF0C\u6A21\u578B\u540D\u79F0\u586B\u4F60\u60F3\u8981\u7684\u578B\u53F7\uFF08\u5982 gemini-3.5-flash \u6216 deepseek-chat\uFF09\uFF0CAPI Key \u4ECE\u5404\u81EA\u5E73\u53F0\u83B7\u53D6\u3002\u53EF\u6DFB\u52A0\u591A\u4E2A\u5E76\u968F\u65F6\u5207\u6362\u3002",
-  "settings.provider_placeholder": "\u4F9B\u5E94\u5546",
+  "settings.provider": "\u4F9B\u5E94\u5546",
   "settings.model_name_placeholder": "\u6A21\u578B\u540D\u79F0\uFF0C\u5982 gemini-3.5-flash \u6216 deepseek-chat",
   "settings.need_name_key": "\u8BF7\u586B\u5199\u6A21\u578B\u540D\u79F0\u548C API Key",
   "settings.models": "\u5DF2\u6DFB\u52A0\u6A21\u578B",
@@ -154,7 +154,7 @@ var en = {
   "settings.api_key": "API Key",
   "settings.add_model": "Add model",
   "settings.add_hint": "Pick a provider (Gemini / DeepSeek), enter the model name (e.g. gemini-3.5-flash or deepseek-chat), and an API key from the provider's console. You can add multiple models and switch anytime.",
-  "settings.provider_placeholder": "Provider",
+  "settings.provider": "Provider",
   "settings.model_name_placeholder": "Model name, e.g. gemini-3.5-flash or deepseek-chat",
   "settings.need_name_key": "Please fill in model name and API key",
   "settings.models": "Added models",
@@ -616,9 +616,11 @@ var AISettingsTab = class extends import_obsidian4.PluginSettingTab {
       text: t("settings.add_hint")
     });
     const addWrap = card.createDiv({ cls: "ai-set-add" });
-    const providerSelect = addWrap.createEl("select", {
+    const providerWrap = addWrap.createDiv({ cls: "ai-set-provider-wrap" });
+    providerWrap.createSpan({ cls: "ai-set-field-label", text: t("settings.provider") });
+    const providerSelect = providerWrap.createEl("select", {
       cls: "ai-set-input ai-set-provider",
-      attr: { "aria-label": t("settings.provider_placeholder") }
+      attr: { "aria-label": t("settings.provider") }
     });
     for (const [id, label] of Object.entries(PROVIDER_LABELS)) {
       const opt = providerSelect.createEl("option", { text: label, value: id });
@@ -775,8 +777,11 @@ var AISettingsTab = class extends import_obsidian4.PluginSettingTab {
       value: m.name,
       placeholder: t("settings.model_name")
     });
-    const providerSelect = row.createEl("select", {
-      cls: "ai-set-input ai-set-provider"
+    const providerWrap = row.createDiv({ cls: "ai-set-provider-wrap" });
+    providerWrap.createSpan({ cls: "ai-set-field-label", text: t("settings.provider") });
+    const providerSelect = providerWrap.createEl("select", {
+      cls: "ai-set-input ai-set-provider",
+      attr: { "aria-label": t("settings.provider") }
     });
     for (const [id, label] of Object.entries(PROVIDER_LABELS)) {
       const opt = providerSelect.createEl("option", { text: label, value: id });

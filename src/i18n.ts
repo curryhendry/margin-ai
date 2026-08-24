@@ -55,7 +55,7 @@ const zh: Record<string, string> = {
   "settings.add_model": "添加模型",
   "settings.add_hint":
     "选择供应商（Gemini / DeepSeek），模型名称填你想要的型号（如 gemini-3.5-flash 或 deepseek-chat），API Key 从各自平台获取。可添加多个并随时切换。",
-  "settings.provider_placeholder": "供应商",
+  "settings.provider": "供应商",
   "settings.model_name_placeholder": "模型名称，如 gemini-3.5-flash 或 deepseek-chat",
   "settings.need_name_key": "请填写模型名称和 API Key",
   "settings.models": "已添加模型",
@@ -127,7 +127,7 @@ const en: Record<string, string> = {
   "settings.add_model": "Add model",
   "settings.add_hint":
     "Pick a provider (Gemini / DeepSeek), enter the model name (e.g. gemini-3.5-flash or deepseek-chat), and an API key from the provider's console. You can add multiple models and switch anytime.",
-  "settings.provider_placeholder": "Provider",
+  "settings.provider": "Provider",
   "settings.model_name_placeholder": "Model name, e.g. gemini-3.5-flash or deepseek-chat",
   "settings.need_name_key": "Please fill in model name and API key",
   "settings.models": "Added models",

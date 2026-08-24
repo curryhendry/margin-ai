@@ -719,3 +719,14 @@ button.ai-popover-msg-edit:hover {
   width: auto;
   min-width: 104px;
 }
+.ai-set-provider-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+.ai-set-field-label {
+  font-size: 11px;
+  opacity: 0.7;
+  white-space: nowrap;
+}

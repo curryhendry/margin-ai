@@ -1,8 +1,9 @@
-## 0.1.036.dev - 2026-08-24
+## 0.1.037.dev - 2026-08-24
 
 - 🆕 DeepSeek 支持：新增 DeepSeek 供应商（deepseek-chat / deepseek-reasoner，OpenAI 兼容 /chat/completions 流式），设置页可选择 Gemini / DeepSeek；连接测试按供应商走对应接口并回填限额；兼容自定义网关 base URL
 - 🧩 架构：设置页测试连接改为走统一 LLMProvider.getModelMeta，不再硬编码 Gemini
 - 🌐 中英文文案新增供应商选择与 API 错误提示（Key 无效 / 余额不足 / 限流）
+- 🧹 设置页：添加/编辑模型时供应商下拉带「供应商」标签，明确可切换 Gemini / DeepSeek
 - 🐛 修复复制「假成功」：桌面端强制走 Electron 剪贴板（同步+回读校验），不再走会假成功的 navigator.clipboard；execCommand 兜底不再误报失败
 - 🌏 区域封锁提示：识别 Gemini「User location is not supported」，给出明确中文提示（切换代理节点到支持地区）
 - 🧹 设置页：移除重复的「默认模型」下拉（保留列表内「设为默认」按钮）
