@@ -1,4 +1,4 @@
-## 0.1.042.dev - 2026-08-27
+## 0.1.043 - 2026-08-27
 
 - ⚙️ 发布流程：release workflow 升级为官方规范——tag 推送后自动构建并创建 GitHub Release（附 main.js / manifest.json / styles.css），不再依赖手动创建
 - 🆕 MiMo 支持：新增小米 MiMo 供应商（mimo-v2.5-pro / mimo-v2.5 / mimo-v2-flash，OpenAI 兼容 /chat/completions 流式），设置页供应商按钮新增 MiMo；连接测试按供应商走对应接口并回填限额
