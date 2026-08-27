@@ -1,5 +1,6 @@
-## 0.1.041 - 2026-08-27
+## 0.1.042.dev - 2026-08-27
 
+- ⚙️ 发布流程：release workflow 升级为官方规范——tag 推送后自动构建并创建 GitHub Release（附 main.js / manifest.json / styles.css），不再依赖手动创建
 - 🆕 MiMo 支持：新增小米 MiMo 供应商（mimo-v2.5-pro / mimo-v2.5 / mimo-v2-flash，OpenAI 兼容 /chat/completions 流式），设置页供应商按钮新增 MiMo；连接测试按供应商走对应接口并回填限额
 - 🆕 DeepSeek 支持：新增 DeepSeek 供应商（deepseek-chat / deepseek-reasoner，OpenAI 兼容 /chat/completions 流式），设置页可选择 Gemini / DeepSeek；连接测试按供应商走对应接口并回填限额；兼容自定义网关 base URL
 - 🧩 架构：设置页测试连接改为走统一 LLMProvider.getModelMeta，不再硬编码 Gemini
