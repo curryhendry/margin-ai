@@ -1,5 +1,6 @@
 import { GeminiProvider } from "./gemini";
 import { DeepSeekProvider } from "./deepseek";
+import { MiMoProvider } from "./mimo";
 import { LLMProvider } from "./types";
 
 /**
@@ -9,6 +10,7 @@ import { LLMProvider } from "./types";
 export const providers: Record<string, LLMProvider> = {
   gemini: new GeminiProvider(),
   deepseek: new DeepSeekProvider(),
+  mimo: new MiMoProvider(),
 };
 
 export function getProvider(id: string): LLMProvider {

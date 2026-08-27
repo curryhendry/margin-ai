@@ -4,12 +4,13 @@ import { getProvider } from "./llm";
 import type { ModelMeta } from "./llm/types";
 import { t, tf } from "./i18n";
 
-export type ProviderId = "gemini" | "deepseek";
+export type ProviderId = "gemini" | "deepseek" | "mimo";
 
-/** 供应商展示名（设置页下拉用） */
+/** 供应商展示名（设置页按钮 Tab 用） */
 export const PROVIDER_LABELS: Record<ProviderId, string> = {
   gemini: "Gemini",
   deepseek: "DeepSeek",
+  mimo: "MiMo",
 };
 
 export interface AIModel {
@@ -17,7 +18,7 @@ export interface AIModel {
   id: string;
   /** 模型名称，即发给 API 的 model 字段，例如 gemini-3.5-flash（用户录入，不写硬） */
   name: string;
-  /** 供应商：gemini / deepseek（新增时同步扩展 ProviderId 与 PROVIDER_LABELS） */
+  /** 供应商：gemini / deepseek / mimo（新增时同步扩展 ProviderId 与 PROVIDER_LABELS） */
   provider: ProviderId;
   /** API Key，用户录入 */
   apiKey: string;
