@@ -1,4 +1,4 @@
-## 0.1.040.dev - 2026-08-27
+## 0.1.041 - 2026-08-27
 
 - 🆕 MiMo 支持：新增小米 MiMo 供应商（mimo-v2.5-pro / mimo-v2.5 / mimo-v2-flash，OpenAI 兼容 /chat/completions 流式），设置页供应商按钮新增 MiMo；连接测试按供应商走对应接口并回填限额
 - 🆕 DeepSeek 支持：新增 DeepSeek 供应商（deepseek-chat / deepseek-reasoner，OpenAI 兼容 /chat/completions 流式），设置页可选择 Gemini / DeepSeek；连接测试按供应商走对应接口并回填限额；兼容自定义网关 base URL
