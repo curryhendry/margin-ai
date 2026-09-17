@@ -79,6 +79,7 @@ var zh = {
   "popover.ask_marker": "\u8BF7\u57FA\u4E8E\u4E0A\u8FF0\u6587\u672C\u56DE\u7B54\u6211\u7684\u95EE\u9898\uFF1A",
   "popover.selection_label": "\u57FA\u4E8E\u9009\u533A\uFF1A",
   "popover.ask_prompt": '\u4EE5\u4E0B\u662F\u9009\u4E2D\u7684\u6587\u672C\uFF1A\n"""\n{selection}\n"""\n\n\u8BF7\u57FA\u4E8E\u4E0A\u8FF0\u6587\u672C\u56DE\u7B54\u6211\u7684\u95EE\u9898\uFF1A{question}',
+  "popover.output_only": "\u76F4\u63A5\u8F93\u51FA\u7ED3\u679C\u672C\u8EAB\uFF0C\u4E0D\u8981\u4EFB\u4F55\u5F00\u573A\u767D\uFF08\u5982\u201C\u597D\u7684\u201D\u201C\u4EE5\u4E0B\u662F\u2026\u201D\uFF09\u3001\u4E0D\u8981\u89E3\u91CA\u3001\u4E0D\u8981\u603B\u7ED3\u3001\u4E0D\u8981\u7ED3\u675F\u8BED\u3001\u4E0D\u8981\u91CD\u590D\u6211\u7ED9\u51FA\u7684\u539F\u6587\u3002\u53EA\u8F93\u51FA\u6700\u7EC8\u5185\u5BB9\u3002",
   "popover.this_usage": "\u672C\u6B21 \u63D0\u793A {prompt} \xB7 \u8865\u5168 {completion} \xB7 \u603B\u8BA1 {total}",
   // settings
   "settings.title": "Margin \u8BBE\u7F6E",
@@ -148,6 +149,7 @@ var en = {
   "popover.ask_marker": "Please answer my question based on the text above:",
   "popover.selection_label": "Based on selection: ",
   "popover.ask_prompt": 'Here is the selected text:\n"""\n{selection}\n"""\n\nPlease answer my question based on the text above: {question}',
+  "popover.output_only": 'Output only the result itself. No preamble (like "OK" or "Here is"), no explanation, no summary, no closing remarks, and do not repeat the original text. Output only the final content.',
   "popover.this_usage": "This: prompt {prompt} \xB7 completion {completion} \xB7 total {total}",
   "settings.title": "Margin Settings",
   "settings.eye": "Show / Hide",
@@ -1955,16 +1957,17 @@ var _SelectionPopover = class _SelectionPopover {
     }
     this.attachRefsFromText(text);
     if (this.messages.length === 0) {
+      const outputOnly = "\n\n" + t("popover.output_only");
       if (this.selected) {
         this.messages.push({
           role: "user",
           content: tf("popover.ask_prompt", {
             selection: this.selected,
             question: text
-          })
+          }) + outputOnly
         });
       } else {
-        this.messages.push({ role: "user", content: text });
+        this.messages.push({ role: "user", content: text + outputOnly });
       }
     } else {
       this.messages.push({ role: "user", content: text });

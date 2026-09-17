@@ -412,6 +412,7 @@ export class SelectionPopover {
     this.attachRefsFromText(text);
 
     if (this.messages.length === 0) {
+      const outputOnly = "\n\n" + t("popover.output_only");
       if (this.selected) {
         // 首轮：把选区作为上下文带给模型（多轮后模型仍记得选的是什么）
         this.messages.push({
@@ -419,10 +420,10 @@ export class SelectionPopover {
           content: tf("popover.ask_prompt", {
             selection: this.selected,
             question: text,
-          }),
+          }) + outputOnly,
         });
       } else {
-        this.messages.push({ role: "user", content: text });
+        this.messages.push({ role: "user", content: text + outputOnly });
       }
     } else {
       this.messages.push({ role: "user", content: text });

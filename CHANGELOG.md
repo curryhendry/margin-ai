@@ -1,4 +1,4 @@
-## 0.1.045.dev - 2026-09-04
+## 0.1.046.dev - 2026-09-17
 
 - ⚙️ 发布流程：release workflow 升级为官方规范——tag 推送后自动构建并创建 GitHub Release（附 main.js / manifest.json / styles.css），不再依赖手动创建
 - 🆕 MiMo 支持：新增小米 MiMo 供应商（mimo-v2.5-pro / mimo-v2.5 / mimo-v2-flash，OpenAI 兼容 /chat/completions 流式），设置页供应商按钮新增 MiMo；连接测试按供应商走对应接口并回填限额
@@ -9,6 +9,7 @@
 - 🐛 修复复制「假成功」：桌面端强制走 Electron 剪贴板（同步+回读校验），不再走会假成功的 navigator.clipboard；execCommand 兜底不再误报失败
 - 🌏 区域封锁提示：识别 Gemini「User location is not supported」，给出明确中文提示（切换代理节点到支持地区）
 - 🧹 设置页：移除重复的「默认模型」下拉（保留列表内「设为默认」按钮）
+- 🎯 划词弹窗：自动注入「只输出结果」约束——生成内容不再带开场白 / 解释 / 总结 / 结束语，插入或覆盖选区时直接得到干净结果
 
 ## 0.1.033.dev - 2026-08-21
 

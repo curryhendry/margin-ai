@@ -47,6 +47,8 @@ const zh: Record<string, string> = {
   "popover.selection_label": "基于选区：",
   "popover.ask_prompt":
     "以下是选中的文本：\n\"\"\"\n{selection}\n\"\"\"\n\n请基于上述文本回答我的问题：{question}",
+  "popover.output_only":
+    "直接输出结果本身，不要任何开场白（如“好的”“以下是…”）、不要解释、不要总结、不要结束语、不要重复我给出的原文。只输出最终内容。",
   "popover.this_usage": "本次 提示 {prompt} · 补全 {completion} · 总计 {total}",
   // settings
   "settings.title": "Margin 设置",
@@ -120,6 +122,8 @@ const en: Record<string, string> = {
   "popover.selection_label": "Based on selection: ",
   "popover.ask_prompt":
     "Here is the selected text:\n\"\"\"\n{selection}\n\"\"\"\n\nPlease answer my question based on the text above: {question}",
+  "popover.output_only":
+    "Output only the result itself. No preamble (like \"OK\" or \"Here is\"), no explanation, no summary, no closing remarks, and do not repeat the original text. Output only the final content.",
   "popover.this_usage": "This: prompt {prompt} · completion {completion} · total {total}",
   "settings.title": "Margin Settings",
   "settings.eye": "Show / Hide",
