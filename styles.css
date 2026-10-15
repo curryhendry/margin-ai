@@ -730,7 +730,7 @@ button.ai-popover-msg-edit:hover {
   opacity: 0.7;
   white-space: nowrap;
 }
-/* 供应商双按钮 Tab：选中高亮，Obsidian 原生扁平风 */
+/* 供应商按钮 Tab：选中高亮，Obsidian 原生扁平风 */
 .ai-set-provider-btns {
   display: inline-flex;
   gap: 2px;

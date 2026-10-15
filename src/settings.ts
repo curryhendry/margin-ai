@@ -4,13 +4,14 @@ import { getProvider } from "./llm";
 import type { ModelMeta } from "./llm/types";
 import { t, tf } from "./i18n";
 
-export type ProviderId = "gemini" | "deepseek" | "mimo";
+export type ProviderId = "gemini" | "deepseek" | "mimo" | "glm";
 
 /** 供应商展示名（设置页按钮 Tab 用） */
 export const PROVIDER_LABELS: Record<ProviderId, string> = {
   gemini: "Gemini",
   deepseek: "DeepSeek",
   mimo: "MiMo",
+  glm: "GLM",
 };
 
 export interface AIModel {
@@ -18,7 +19,7 @@ export interface AIModel {
   id: string;
   /** 模型名称，即发给 API 的 model 字段，例如 gemini-3.5-flash（用户录入，不写硬） */
   name: string;
-  /** 供应商：gemini / deepseek / mimo（新增时同步扩展 ProviderId 与 PROVIDER_LABELS） */
+  /** 供应商：gemini / deepseek / mimo / glm（新增时同步扩展 ProviderId 与 PROVIDER_LABELS） */
   provider: ProviderId;
   /** API Key，用户录入 */
   apiKey: string;
@@ -121,7 +122,7 @@ export class AISettingsTab extends PluginSettingTab {
     });
 
     const addWrap = card.createDiv({ cls: "ai-set-add" });
-    // 供应商选择：双按钮 Tab（Gemini / DeepSeek），选中高亮，一眼可见可切换
+    // 供应商选择：按钮 Tab（Gemini / DeepSeek / MiMo / GLM），选中高亮，一眼可见可切换
     const providerWrap = addWrap.createDiv({ cls: "ai-set-provider-wrap" });
     providerWrap.createSpan({ cls: "ai-set-field-label", text: t("settings.provider") });
     const providerBtns = providerWrap.createDiv({ cls: "ai-set-provider-btns" });
