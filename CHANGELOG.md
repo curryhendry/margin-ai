@@ -1,4 +1,4 @@
-## 0.1.049.dev - 2026-10-15
+## 0.1.050 - 2026-10-15
 
 - 🆕 GLM 支持：新增智谱 GLM 供应商（glm-5.2 / glm-5.1 等，OpenAI 兼容 /chat/completions 流式，base URL `https://open.bigmodel.cn/api/paas/v4`），设置页供应商按钮新增 GLM；连接测试走统一 LLMProvider.getModelMeta 并回填限额
 - 🌐 中英文文案同步更新供应商说明与模型名示例（新增 GLM）
